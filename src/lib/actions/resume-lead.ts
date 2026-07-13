@@ -1,0 +1,54 @@
+'use server';
+
+import { z } from 'zod';
+import { selectResumeState, type ResumeState } from '@/lib/db/queries/leads';
+import { fieldErrorsOf } from '@/lib/validation/utils';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { logger } from '@/lib/utils/logger';
+import { actionOk, actionError, type ActionResult } from '@/types/waitlist';
+
+const resumeSchema = z.object({
+  leadId: z.uuid(),
+  resumeToken: z.string().min(1),
+});
+
+export interface GetLeadForResumeInput {
+  leadId: string;
+  resumeToken: string;
+}
+
+/**
+ * Resume lookup (plan §12). Returns masked, non-sensitive data only so a resumed session
+ * on a shared device never exposes the raw email/phone. The token hash + expiry are
+ * re-verified server-side on every call.
+ */
+export async function getLeadForResume(
+  input: GetLeadForResumeInput,
+): Promise<ActionResult<ResumeState>> {
+  const parsed = resumeSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError('validation_error', 'Invalid session.', fieldErrorsOf(parsed.error));
+  }
+
+  const ip = await getClientIp();
+  const rate = await checkRateLimit('resume_lookup', ip);
+  if (!rate.allowed) {
+    return actionError('rate_limited', 'Too many attempts — please wait a moment.');
+  }
+
+  try {
+    const state = await selectResumeState(parsed.data);
+    if (!state) {
+      return actionError('invalid_token', 'This session could not be resumed.');
+    }
+    return actionOk(state);
+  } catch (err) {
+    logger.error({
+      event: 'resume_lookup_failed',
+      action: 'resume_lookup',
+      errorCode: 'server_error',
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return actionError('server_error', 'Something went wrong. Please refresh.');
+  }
+}
