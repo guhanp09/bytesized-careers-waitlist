@@ -1,18 +1,18 @@
 # ByteSized Careers — Waitlist
 
-A premium, dark, single-page waitlist for **ByteSized Careers** (creator-economy jobs & talent). It collects and reliably persists leads through a low-friction, progressive 5-step flow, with a protected admin dashboard and CSV export.
+A premium, dark, single-page waitlist for **ByteSized Careers** (creator-economy jobs & talent). It collects and reliably persists a person's name and email through a low-friction progressive flow, with ownership verification, a protected admin dashboard, and CSV export.
 
 > This repository is **standalone** and must stay fully separate from the CreatorJobs project (code, GitHub repo, Vercel project, Neon database, env vars).
 
 - **Stack:** Next.js (App Router) · TypeScript · Tailwind CSS v4 · Drizzle ORM · Neon Postgres · Auth.js (GitHub OAuth) · Zod · Vitest + Playwright · Vercel.
-- **Works today with no domain and no email provider.** Email delivery/verification is a flag-gated, swappable integration to add later (see [`docs/email-integration.md`](docs/email-integration.md)).
+- **Works with or without email delivery.** Real Resend verification is implemented behind disabled-by-default feature flags (see [`docs/email-integration.md`](docs/email-integration.md)).
 
 ---
 
 ## The flow
 
 ```
-Email  →  Role (work / hire / both)  →  Interests (role-adapted)  →  Phone + WhatsApp (optional)  →  Success
+Name + email → Role → Interests → Email verification → Context → Phone → Phone mock verification → Note → Success
 ```
 
 Every step persists **before** advancing — there is no final "Submit" gate, so a visitor who leaves partway is still a useful, segmented lead. Returning visitors can resume (masked email, explicit confirmation). The highest-priority guarantee: **no silently lost email submission** — success is shown only after the database confirms the write.
@@ -58,9 +58,12 @@ See [`.env.example`](.env.example) for the full annotated list. Required for the
 | `RATE_LIMIT_IP_PEPPER` | Server-only pepper for hashing IPs in the rate limiter (raw IPs are never stored). |
 | `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Admin login via GitHub OAuth. |
 | `ADMIN_ALLOWED_GITHUB_LOGINS` | Comma-separated GitHub usernames allowed into `/admin`. |
-| `EMAIL_DELIVERY_ENABLED`, `EMAIL_VERIFICATION_ENABLED` | Keep `false` until a domain + email provider are configured. |
+| `ADMIN_LOCAL_PREVIEW_ENABLED` | Optional localhost-only development preview; disabled by default and hard-disabled outside development. |
+| `EMAIL_DELIVERY_ENABLED`, `EMAIL_VERIFICATION_ENABLED` | Keep `false` until the Resend domain and credentials are configured. |
+| `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO` | Real email delivery configuration; only read when delivery is enabled. |
+| `LOCAL_VERIFICATION_ENABLED` | Development/test mock codes only; production hard-disables it. |
 
-Email-provider variables (`RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, …) are **not required now** — see [`docs/email-integration.md`](docs/email-integration.md).
+Email-provider variables are optional while delivery is disabled. See [`docs/email-integration.md`](docs/email-integration.md) for the secure activation checkpoint.
 
 ---
 
@@ -76,6 +79,8 @@ Email-provider variables (`RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, …) are **not
 | `npm run test:e2e` | End-to-end tests (Playwright). |
 | `npm run db:generate` | Generate a new SQL migration from `src/lib/db/schema.ts`. |
 | `npm run db:migrate` | Apply migrations. |
+| `npm run db:seed-admin-examples` | Upsert clearly marked dashboard demo leads into local PostgreSQL only. |
+| `npm run db:remove-admin-examples` | Remove only marked local demo leads; run only with explicit approval. |
 | `npm run db:studio` | Open Drizzle Studio. |
 
 ### Testing local submissions & verifying data in the DB
@@ -164,16 +169,19 @@ Any promotional send **must** be gated on consent. WhatsApp: `whatsapp_consent =
 ```
 src/
   app/                     # routes: /, /privacy, /terms, /admin/*, /api/*
-  components/waitlist/     # the 5 steps + flow orchestrator + resume prompt
+  components/waitlist/     # progressive steps + flow orchestrator + resume prompt
   components/ui/           # button, chip, checkbox, tap-target-card, country-select, …
   lib/
     db/schema.ts           # Drizzle schema (waitlist_leads, rate_limit_hits)
     db/queries/            # leads.ts (flow), admin.ts (dashboard)
     actions/               # server actions, one per step + resume
     validation/            # Zod schemas + the category/format/org vocabularies
-    tokens/ rate-limit/ email/ auth/ utils/
+    tokens/ rate-limit/ email/ verification/ auth/ utils/
 tests/                     # unit, integration (Postgres), e2e (Playwright)
 drizzle/                   # generated SQL migrations
 ```
 
-See [`docs/email-integration.md`](docs/email-integration.md) for the future email/verification rollout.
+See [`docs/email-integration.md`](docs/email-integration.md) for local mock testing, Resend DNS setup, and the gated production rollout.
+
+See [`docs/lead-domain.md`](docs/lead-domain.md) for the current form-to-database field map,
+structured seeker/recruiter intent model, compatibility policy, and admin/export contract.

@@ -1,16 +1,20 @@
 import { Pool } from 'pg';
 
-// Reset the test database before the e2e run so results are deterministic across reruns.
+// Verify the dedicated test database is local and migrated. Never truncate pre-existing
+// local rows; browser tests use unique addresses for isolation.
 export default async function globalSetup() {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    'postgresql://postgres:postgres@localhost:5433/bytesized_test';
+  const url = new URL(connectionString);
+  if (!['localhost', '127.0.0.1', '::1', '[::1]'].includes(url.hostname)) {
+    throw new Error('E2E tests refuse to use a non-local database.');
+  }
   const pool = new Pool({
-    connectionString:
-      process.env.DATABASE_URL ??
-      'postgresql://postgres:postgres@localhost:5433/bytesized_test',
+    connectionString,
   });
   try {
-    await pool.query(
-      'truncate table waitlist_leads, rate_limit_hits restart identity cascade',
-    );
+    await pool.query('select lead_data_version from waitlist_leads limit 0');
   } finally {
     await pool.end();
   }
