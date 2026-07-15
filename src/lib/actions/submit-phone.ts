@@ -5,7 +5,6 @@ import { fieldErrorsOf } from '@/lib/validation/utils';
 import { updateLeadPhone } from '@/lib/db/queries/leads';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/utils/logger';
-import { WHATSAPP_CONSENT_COPY_VERSION } from '@/lib/consent';
 import { actionOk, actionError, type ActionResult } from '@/types/waitlist';
 
 export type SubmitPhoneInput =
@@ -16,12 +15,11 @@ export type SubmitPhoneInput =
       skipped: false;
       countryIso: string;
       phoneNumber: string;
-      whatsappConsent: boolean;
     };
 
 /**
- * Step 4 — phone + WhatsApp consent (plan §10, §16). Both "skip" and "submit" complete the
- * signup. The number is normalized to E.164; consent is stored separately and never implied.
+ * Step 6 — optional phone capture. Promotional WhatsApp consent was removed from the
+ * current form, so this action never accepts or updates the legacy consent columns.
  */
 export async function submitPhoneStep(
   input: SubmitPhoneInput,
@@ -83,8 +81,6 @@ export async function submitPhoneStep(
       skipped: false,
       phoneE164: normalized.e164,
       phoneCountryIso: normalized.countryIso,
-      whatsappConsent: parsed.data.whatsappConsent,
-      consentCopyVersion: WHATSAPP_CONSENT_COPY_VERSION,
     });
     if (!ok) {
       return actionError(
@@ -96,7 +92,6 @@ export async function submitPhoneStep(
       event: 'phone_saved',
       action: 'submit_phone',
       leadId: parsed.data.leadId,
-      whatsappConsent: parsed.data.whatsappConsent,
     });
     return actionOk({ leadId: parsed.data.leadId });
   } catch (err) {

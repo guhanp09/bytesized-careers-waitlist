@@ -1,5 +1,7 @@
 'use client';
 
+import { cn } from '@/lib/utils/cn';
+
 interface CheckboxProps {
   id: string;
   checked: boolean;
@@ -16,7 +18,10 @@ export function Checkbox({ id, checked, onChange, label, disabled }: CheckboxPro
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 text-sm text-muted"
+      className={cn(
+        'flex items-start gap-3 text-sm text-muted',
+        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+      )}
     >
       <input
         id={id}

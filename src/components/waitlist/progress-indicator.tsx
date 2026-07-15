@@ -3,17 +3,19 @@
 import { motion, useReducedMotion } from 'motion/react';
 
 interface ProgressIndicatorProps {
-  /** Current step, 1–5. */
+  /** Current step (1-indexed). */
   step: number;
+  /** Total steps in the funnel. */
+  total?: number;
 }
 
 /**
  * Slim progress bar (plan §8) — gentle "you're nearly there" feedback rather than a heavy
  * numbered stepper. Animates its width as the visitor advances; instant under reduced motion.
  */
-export function ProgressIndicator({ step }: ProgressIndicatorProps) {
+export function ProgressIndicator({ step, total = 8 }: ProgressIndicatorProps) {
   const reduce = useReducedMotion();
-  const fraction = Math.min(Math.max((step - 1) / 4, 0), 1);
+  const fraction = Math.min(Math.max((step - 1) / Math.max(total - 1, 1), 0), 1);
 
   return (
     <div

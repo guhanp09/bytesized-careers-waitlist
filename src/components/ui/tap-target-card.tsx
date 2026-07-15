@@ -7,6 +7,7 @@ interface TapTargetCardProps {
   description?: string;
   selected?: boolean;
   disabled?: boolean;
+  icon?: React.ReactNode;
   onSelect: () => void;
 }
 
@@ -20,6 +21,7 @@ export function TapTargetCard({
   description,
   selected = false,
   disabled = false,
+  icon,
   onSelect,
 }: TapTargetCardProps) {
   return (
@@ -29,7 +31,7 @@ export function TapTargetCard({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        'group flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition-all duration-200',
+        'group flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all duration-200',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         'disabled:opacity-50',
         selected
@@ -37,7 +39,21 @@ export function TapTargetCard({
           : 'border-[color:var(--color-line)] bg-surface hover:border-[color:var(--color-line-strong)] hover:bg-elevated',
       )}
     >
-      <span className="flex flex-col gap-1">
+      {icon ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-lg border transition-colors duration-200',
+            selected
+              ? 'border-accent/40 bg-accent/10 text-accent'
+              : 'border-[color:var(--color-line)] bg-elevated text-muted',
+          )}
+        >
+          {icon}
+        </span>
+      ) : null}
+
+      <span className="flex flex-1 flex-col gap-1">
         <span className="text-base font-medium text-ink">{label}</span>
         {description ? (
           <span className="text-sm text-muted">{description}</span>

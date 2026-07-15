@@ -11,9 +11,9 @@ export interface SubmitPreferencesInput {
   leadId: string;
   resumeToken: string;
   jobCategories?: string[];
-  workFormats?: string[];
   talentCategories?: string[];
-  organisationTypes?: string[];
+  jobCategoryOthers?: Record<string, string>;
+  talentCategoryOthers?: Record<string, string>;
 }
 
 /**

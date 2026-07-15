@@ -8,6 +8,7 @@ export type ActionErrorCode =
   | 'validation_error'
   | 'rate_limited'
   | 'invalid_token'
+  | 'delivery_failed'
   | 'server_error';
 
 export type ActionError = {

@@ -21,9 +21,16 @@ const rawEnvSchema = z.object({
   AUTH_GITHUB_ID: z.string().optional(),
   AUTH_GITHUB_SECRET: z.string().optional(),
   ADMIN_ALLOWED_GITHUB_LOGINS: z.string().optional(),
+  ADMIN_LOCAL_PREVIEW_ENABLED: z.string().optional(),
 
   EMAIL_DELIVERY_ENABLED: z.string().optional(),
   EMAIL_VERIFICATION_ENABLED: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM_ADDRESS: z.string().optional(),
+  EMAIL_REPLY_TO: z.string().optional(),
+
+  // Local-development-only verification (mock email/phone codes). NEVER for production.
+  LOCAL_VERIFICATION_ENABLED: z.string().optional(),
 
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -41,10 +48,19 @@ export const env = {
   ...parsed,
   emailDeliveryEnabled: asFlag(parsed.EMAIL_DELIVERY_ENABLED),
   emailVerificationEnabled: asFlag(parsed.EMAIL_VERIFICATION_ENABLED),
+  resendConfigured: Boolean(
+    parsed.RESEND_API_KEY?.trim() && parsed.EMAIL_FROM_ADDRESS?.trim(),
+  ),
+  // Mock verification is available ONLY when explicitly enabled AND not production.
+  localVerificationEnabled:
+    asFlag(parsed.LOCAL_VERIFICATION_ENABLED) && parsed.NODE_ENV !== 'production',
   adminAllowedGithubLogins: (parsed.ADMIN_ALLOWED_GITHUB_LOGINS ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
+  // Screenshot/review convenience. Host validation is applied separately at request time.
+  localAdminPreviewEnabled:
+    asFlag(parsed.ADMIN_LOCAL_PREVIEW_ENABLED) && parsed.NODE_ENV === 'development',
   isProduction: parsed.NODE_ENV === 'production',
   isTest: parsed.NODE_ENV === 'test',
 } as const;

@@ -33,8 +33,13 @@ export default defineConfig({
       RESUME_TOKEN_SECRET: 'e2e-resume-secret',
       RATE_LIMIT_IP_PEPPER: 'e2e-pepper',
       AUTH_SECRET: 'e2e-auth-secret',
+      AUTH_URL: baseURL,
       EMAIL_DELIVERY_ENABLED: 'false',
-      EMAIL_VERIFICATION_ENABLED: 'false',
+      EMAIL_VERIFICATION_ENABLED: 'true',
+      // Local mock verification, so e2e can exercise the dev-code flow (dev only).
+      LOCAL_VERIFICATION_ENABLED: 'true',
+      // Disable rate limiting for the e2e run (many submits from one IP). Test-only.
+      RATE_LIMIT_DISABLED: 'true',
     },
   },
 });

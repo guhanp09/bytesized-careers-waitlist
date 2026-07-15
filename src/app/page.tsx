@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { WaitlistFlow } from '@/components/waitlist/waitlist-flow';
-import { HeroVisual } from '@/components/waitlist/hero-visual';
+import { AmbientProvider } from '@/components/waitlist/ambient-context';
+import { AmbientBackground } from '@/components/waitlist/ambient-background';
+import { LockIcon } from '@/components/ui/icons';
 
 export default function Home() {
   return (
-    <div className="relative min-h-dvh overflow-hidden">
-      <HeroVisual />
+    <AmbientProvider>
+      <div className="relative isolate min-h-dvh overflow-hidden">
+        <AmbientBackground />
 
       {/* Header */}
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
@@ -54,11 +57,14 @@ export default function Home() {
         </section>
 
         {/* Trust strip */}
-        <section className="mt-12 rounded-xl border border-[color:var(--color-line)] bg-surface/40 p-5">
+        <section className="mt-12 flex items-start gap-3 rounded-xl border border-[color:var(--color-line)] bg-surface/40 p-5">
+          <span className="mt-0.5 text-accent">
+            <LockIcon className="size-5" />
+          </span>
           <p className="text-sm leading-relaxed text-muted">
-            We collect only what helps us send you relevant opportunities — your
-            email, and optionally your interests and phone. We never sell your data,
-            and promotional messages are strictly opt-in.{' '}
+            We collect only what helps us match you well — nothing more. Your data is
+            never sold, promotional messages are always opt-in, and you can ask us to
+            remove your details anytime.{' '}
             <Link href="/privacy" className="text-accent hover:underline">
               Privacy
             </Link>{' '}
@@ -84,6 +90,7 @@ export default function Home() {
           </nav>
         </div>
       </footer>
-    </div>
+      </div>
+    </AmbientProvider>
   );
 }

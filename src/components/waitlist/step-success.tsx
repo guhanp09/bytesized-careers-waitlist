@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { CheckCircleIcon } from '@/components/ui/icons';
 import type { Role } from '@/types/waitlist';
 
 interface StepSuccessProps {
@@ -9,9 +10,9 @@ interface StepSuccessProps {
 }
 
 const HEADLINE_BY_ROLE: Record<Role, string> = {
-  seeker: "You're on the list. We'll let you know when relevant creator-economy roles open up.",
-  recruiter: "You're on the list. We'll reach out as soon as matching talent is ready for you.",
-  both: "You're on the list. We'll keep you posted from both sides of the marketplace.",
+  seeker: "You're in. We'll reach out the moment the right creator-economy work appears.",
+  recruiter: "You're in. We'll introduce you to matching talent as soon as we launch.",
+  both: "You're in. We'll keep you posted from both sides of the marketplace.",
 };
 
 /**
@@ -43,24 +44,16 @@ export function StepSuccess({ role }: StepSuccessProps) {
         aria-hidden="true"
         className="flex size-11 items-center justify-center rounded-full bg-accent/15 text-accent"
       >
-        <svg viewBox="0 0 24 24" fill="none" className="size-6">
-          <path
-            d="M5 12.5l4 4 10-10"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <CheckCircleIcon className="size-6" />
       </span>
 
-      <h2 className="text-xl font-semibold tracking-tight text-ink text-balance">
+      <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink text-balance">
         {headline}
       </h2>
 
       <p className="text-sm leading-relaxed text-muted">
-        We&apos;re building the founding cohort ahead of public launch. No account
-        needed — just watch your inbox.
+        You&apos;re part of the founding cohort. No account, no noise — just an
+        email when something genuinely fits.
       </p>
 
       <div className="mt-2 flex w-full flex-col gap-3 border-t border-[color:var(--color-line)] pt-5 sm:flex-row sm:items-center sm:justify-between">

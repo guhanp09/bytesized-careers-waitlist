@@ -1,0 +1,1 @@
+ALTER TABLE "waitlist_leads" ADD COLUMN "full_name" text;

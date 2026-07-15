@@ -1,0 +1,2 @@
+ALTER TABLE "waitlist_leads" ADD COLUMN "job_category_others" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "waitlist_leads" ADD COLUMN "talent_category_others" jsonb DEFAULT '{}'::jsonb NOT NULL;

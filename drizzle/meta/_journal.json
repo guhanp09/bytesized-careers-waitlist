@@ -8,6 +8,48 @@
       "when": 1783917367283,
       "tag": "0000_dizzy_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784004760697,
+      "tag": "0001_smooth_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784056487422,
+      "tag": "0002_bouncy_silver_samurai",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784063158341,
+      "tag": "0003_red_magneto",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784080444669,
+      "tag": "0004_chubby_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784122982353,
+      "tag": "0005_chubby_meltdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784140443889,
+      "tag": "0006_dizzy_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

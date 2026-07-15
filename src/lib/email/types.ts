@@ -1,9 +1,8 @@
 /**
  * Transactional email provider abstraction (plan §17).
  *
- * A thin, swappable interface. Today the only implementation is the no-op disabled
- * provider; once a domain + provider (Resend / Postmark / SES) are configured, add an
- * implementation and wire it into `getEmailProvider()` — no other code changes.
+ * A thin, swappable interface implemented by the disabled provider and the Resend adapter.
+ * Callers depend only on this contract, so the delivery vendor remains replaceable.
  *
  * This intentionally models ONLY transactional delivery. It is distinct from:
  *   - email ownership verification (a status on the lead),
@@ -20,13 +19,25 @@ export interface SendTransactionalEmailInput {
   subject: string;
   template: EmailTemplate;
   templateData: Record<string, unknown>;
+  /** Stable per logical email; supported by Resend for 24 hours. */
+  idempotencyKey: string;
 }
 
-export interface SendTransactionalEmailResult {
-  status: 'sent' | 'skipped_disabled' | 'failed';
-  providerMessageId?: string;
-  error?: string;
-}
+export type EmailDeliveryFailureReason =
+  | 'configuration'
+  | 'authentication'
+  | 'validation'
+  | 'rate_limited'
+  | 'provider_rejected'
+  | 'timeout'
+  | 'network'
+  | 'malformed_response'
+  | 'template_error';
+
+export type SendTransactionalEmailResult =
+  | { status: 'sent'; providerMessageId: string }
+  | { status: 'skipped_disabled' }
+  | { status: 'failed'; failureReason: EmailDeliveryFailureReason };
 
 export interface EmailProvider {
   sendTransactionalEmail(

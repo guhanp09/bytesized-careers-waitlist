@@ -1,23 +1,27 @@
 import { env } from '@/lib/env';
 import { disabledEmailProvider } from './disabled-provider';
+import { createResendEmailProvider } from './resend-provider';
 import type { EmailProvider } from './types';
 
 /**
- * Provider factory (plan §17). Returns the no-op disabled provider unless email delivery is
- * enabled. When it IS enabled, a real provider must have been wired in — until then this
- * throws a clear, actionable error rather than silently doing nothing.
- *
- * Future (post domain purchase): import and return a real provider, e.g.
- *   if (env.emailDeliveryEnabled) return resendProvider;
- * See docs/email-integration.md for the full activation checklist.
+ * Provider factory. Delivery stays fail-closed: disabled flags never instantiate a real
+ * provider, and missing credentials return a typed configuration failure instead of
+ * throwing through the waitlist capture flow.
  */
 export function getEmailProvider(): EmailProvider {
   if (!env.emailDeliveryEnabled) {
     return disabledEmailProvider;
   }
-  throw new Error(
-    'EMAIL_DELIVERY_ENABLED=true but no email provider is wired yet. ' +
-      'Implement src/lib/email/resend-provider.ts and return it here ' +
-      '(see docs/email-integration.md).',
-  );
+  if (!env.resendConfigured) {
+    return {
+      async sendTransactionalEmail() {
+        return { status: 'failed', failureReason: 'configuration' };
+      },
+    };
+  }
+  return createResendEmailProvider({
+    apiKey: env.RESEND_API_KEY!.trim(),
+    from: env.EMAIL_FROM_ADDRESS!.trim(),
+    replyTo: env.EMAIL_REPLY_TO?.trim() || undefined,
+  });
 }

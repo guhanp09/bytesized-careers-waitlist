@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { submitPhoneStep } from '@/lib/actions/submit-phone';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { CountrySelect } from '@/components/ui/country-select';
-import { WHATSAPP_CONSENT_LABEL } from '@/lib/consent';
+import { PhoneIcon, ArrowRightIcon } from '@/components/ui/icons';
 
 interface StepPhoneProps {
   leadId: string;
@@ -26,14 +25,13 @@ function detectDefaultCountry(): string {
 }
 
 /**
- * Step 4 — phone + WhatsApp consent (plan §5, §6, §16). Benefit is explained before the
- * field. Phone is optional with a prominent "Skip for now". Consent starts unchecked and is
- * never implied by entering a number. Both paths complete the signup.
+ * Phone step (v2 refined). Benefit-first, no "optional"/"skip" framing — a single confident
+ * Continue; leaving the field empty simply moves on. We collect and separately verify the
+ * number, but do not accept or imply promotional consent.
  */
 export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
   const [countryIso, setCountryIso] = useState(detectDefaultCountry);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [whatsappConsent, setWhatsappConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +49,6 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
             skipped: false,
             countryIso,
             phoneNumber: trimmed,
-            whatsappConsent,
           });
     setBusy(false);
     if (result.ok) {
@@ -63,36 +60,28 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
     }
   }
 
-  async function handleSkip() {
-    if (busy) return;
-    setError(null);
-    setBusy(true);
-    const result = await submitPhoneStep({ leadId, resumeToken, skipped: true });
-    setBusy(false);
-    if (result.ok) {
-      onComplete(false);
-    } else {
-      setError(result.error.message);
-    }
-  }
-
   const hasError = error !== null;
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink">
-          Want priority alerts on WhatsApp?
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Get faster alerts when opportunities matching your interests become
-          available. This is optional.
-        </p>
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent">
+          <PhoneIcon className="size-5" />
+        </span>
+        <div>
+          <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink">
+            Get first dibs on WhatsApp
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Add your number and we&apos;ll ping you the moment a match appears —
+            before it hits your inbox.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
         <label htmlFor="phone" className="text-sm font-medium text-muted">
-          Phone number <span className="text-faint">(optional)</span>
+          Your number
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
           <CountrySelect
@@ -119,27 +108,21 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
           />
         </div>
 
-        <Checkbox
-          id="whatsapp-consent"
-          checked={whatsappConsent}
-          onChange={setWhatsappConsent}
-          disabled={busy}
-          label={WHATSAPP_CONSENT_LABEL}
-        />
-
         {hasError ? (
           <p id="phone-error" role="alert" className="text-sm text-error">
             {error}
           </p>
-        ) : null}
+        ) : (
+          <p className="text-sm text-faint">
+            We&apos;ll only use it for match alerts you ask for — never anything else.
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={handleSkip} disabled={busy}>
-          Skip for now
-        </Button>
+      <div className="flex items-center justify-end gap-3">
         <Button onClick={handleFinish} disabled={busy}>
-          {busy ? 'Finishing…' : 'Finish'}
+          {busy ? 'Saving…' : 'Continue'}
+          {!busy ? <ArrowRightIcon className="size-4" /> : null}
         </Button>
       </div>
     </div>
