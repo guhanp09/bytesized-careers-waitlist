@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import { auth, isAllowedAdmin, signOut } from '@/lib/auth/config';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { localAdminPreviewAllowed } from '@/lib/auth/local-preview';
 import {
+  getAdminFilterOptions,
+  getDashboardAnalytics,
   getWaitlistSummary,
-  getCategoryBreakdown,
-  getSourceBreakdown,
   listLeads,
+  type TrendPeriod,
 } from '@/lib/db/queries/admin';
 import { parseLeadFilters, filtersToQuery } from '@/lib/admin/filters';
-import { CATEGORY_LABELS, type Category } from '@/lib/validation/constants';
-import { SummaryCards } from './summary-cards';
 import { FilterBar } from './filter-bar';
+import { OverviewDashboard } from './overview-dashboard';
 import { WaitlistTable } from './waitlist-table';
 
 export const dynamic = 'force-dynamic';
@@ -21,137 +23,107 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function Breakdown({
-  title,
-  rows,
-  labeler,
-}: {
-  title: string;
-  rows: { key: string; count: number }[];
-  labeler?: (key: string) => string;
-}) {
-  return (
-    <div className="rounded-xl border border-[color:var(--color-line)] bg-surface p-4">
-      <h2 className="text-xs font-medium tracking-wide text-muted uppercase">
-        {title}
-      </h2>
-      <ul className="mt-3 flex flex-col gap-1.5">
-        {rows.slice(0, 6).map((row) => (
-          <li key={row.key} className="flex justify-between text-sm">
-            <span className="text-ink">
-              {labeler ? labeler(row.key) : row.key}
-            </span>
-            <span className="tabular-nums text-muted">{row.count}</span>
-          </li>
-        ))}
-        {rows.length === 0 && <li className="text-sm text-muted">No data yet</li>}
-      </ul>
-    </div>
-  );
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export default async function AdminWaitlistPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!isAllowedAdmin(session)) {
-    redirect('/admin/login');
-  }
+  const preview = localAdminPreviewAllowed((await headers()).get('host'));
+  if (!isAllowedAdmin(session) && !preview) redirect('/admin/login');
 
   const sp = await searchParams;
-  const filters = parseLeadFilters(sp);
-  const pageParam = Array.isArray(sp.page) ? sp.page[0] : sp.page;
-  const page = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1);
-  const offset = (page - 1) * PAGE_SIZE;
-
-  const [summary, categories, sources, list] = await Promise.all([
-    getWaitlistSummary(),
-    getCategoryBreakdown(),
-    getSourceBreakdown(),
-    listLeads(filters, PAGE_SIZE, offset),
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
-  const query = filtersToQuery(filters);
-  const pageHref = (p: number) =>
-    `/admin/waitlist?${query}${query ? '&' : ''}page=${p}`;
-
+  const view = first(sp.view) === 'leads' ? 'leads' : 'overview';
+  const periodValue = first(sp.period);
+  const period: TrendPeriod = periodValue === '7' || periodValue === 'all' ? periodValue : '30';
   const login = (session?.user as { login?: string } | undefined)?.login;
 
+  let content: React.ReactNode;
+  if (view === 'overview') {
+    const [summary, analytics, recent] = await Promise.all([
+      getWaitlistSummary(),
+      getDashboardAnalytics(period),
+      listLeads({}, 6, 0),
+    ]);
+    content = <OverviewDashboard summary={summary} analytics={analytics} recentLeads={recent.rows} />;
+  } else {
+    const filters = parseLeadFilters(sp);
+    const pageParam = first(sp.page);
+    const page = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1);
+    const offset = (page - 1) * PAGE_SIZE;
+    const [list, options] = await Promise.all([
+      listLeads(filters, PAGE_SIZE, offset),
+      getAdminFilterOptions(),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
+    const query = filtersToQuery(filters);
+    const pageHref = (value: number) =>
+      `/admin/waitlist?view=leads${query ? `&${query}` : ''}&page=${value}`;
+
+    content = (
+      <div>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-ink">Individual leads</h2>
+            <p className="mt-1 text-xs text-muted">Search submitted needs and contact details, then open a lead for the full story.</p>
+          </div>
+          <p className="text-sm tabular-nums text-muted">{list.total.toLocaleString()} matching lead{list.total === 1 ? '' : 's'}</p>
+        </div>
+        <FilterBar filters={filters} sources={options.sources} campaigns={options.campaigns} />
+
+        <div className="mt-4 flex items-center justify-between text-xs text-faint">
+          <p>Times shown in Asia/Kolkata (IST)</p>
+          <p>Page {page} of {totalPages}</p>
+        </div>
+        <div className="mt-2"><WaitlistTable rows={list.rows} /></div>
+
+        {totalPages > 1 ? (
+          <nav aria-label="Lead list pagination" className="mt-4 flex items-center justify-center gap-2">
+            {page > 1 ? <Link href={pageHref(page - 1)} className="admin-secondary-button">← Previous</Link> : null}
+            {page < totalPages ? <Link href={pageHref(page + 1)} className="admin-secondary-button">Next →</Link> : null}
+          </nav>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="flex items-center justify-between">
+    <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+      <header className="flex flex-wrap items-start justify-between gap-5 border-b border-[color:var(--color-line)] pb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            Waitlist
-          </h1>
+          <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.16em] text-accent uppercase">
+            <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+            ByteSized Careers · Admin
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-ink sm:text-3xl">Waitlist intelligence</h1>
+          <p className="mt-1.5 text-sm text-muted">Launch planning, demand signals, and every lead in one calm operating view.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {login ? <span className="hidden text-xs text-faint sm:inline">Signed in as {login}</span> : preview ? <span className="hidden text-xs text-faint sm:inline">Local preview · development only</span> : null}
           {login ? (
-            <p className="mt-1 text-sm text-muted">Signed in as {login}</p>
+            <form action={async () => { 'use server'; await signOut({ redirectTo: '/admin/login' }); }}>
+              <button type="submit" className="admin-secondary-button">Sign out</button>
+            </form>
           ) : null}
         </div>
-        <form
-          action={async () => {
-            'use server';
-            await signOut({ redirectTo: '/admin/login' });
-          }}
-        >
-          <button
-            type="submit"
-            className="h-10 rounded-lg border border-[color:var(--color-line)] px-4 text-sm text-muted hover:text-ink"
-          >
-            Sign out
-          </button>
-        </form>
       </header>
 
-      <div className="mt-6">
-        <SummaryCards summary={summary} />
-      </div>
+      <nav aria-label="Waitlist dashboard views" className="my-5 flex w-fit rounded-xl border border-[color:var(--color-line)] bg-surface/60 p-1" role="tablist">
+        <Link
+          href="/admin/waitlist?view=overview"
+          role="tab"
+          aria-selected={view === 'overview'}
+          className={`admin-view-tab ${view === 'overview' ? 'admin-view-tab-active' : ''}`}
+        >Overview</Link>
+        <Link
+          href="/admin/waitlist?view=leads"
+          role="tab"
+          aria-selected={view === 'leads'}
+          className={`admin-view-tab ${view === 'leads' ? 'admin-view-tab-active' : ''}`}
+        >Leads</Link>
+      </nav>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Breakdown
-          title="Top interests"
-          rows={categories}
-          labeler={(key) => CATEGORY_LABELS[key as Category] ?? key}
-        />
-        <Breakdown title="Top sources" rows={sources} />
-      </div>
-
-      <div className="mt-6">
-        <FilterBar filters={filters} />
-      </div>
-
-      <div className="mt-4 flex items-center justify-between">
-        <p className="text-sm text-muted">
-          {list.total.toLocaleString()} result{list.total === 1 ? '' : 's'}
-        </p>
-        <p className="text-sm text-muted">
-          Page {page} of {totalPages}
-        </p>
-      </div>
-
-      <div className="mt-2">
-        <WaitlistTable rows={list.rows} />
-      </div>
-
-      {totalPages > 1 && (
-        <nav className="mt-4 flex items-center justify-center gap-2">
-          {page > 1 && (
-            <Link
-              href={pageHref(page - 1)}
-              className="rounded-lg border border-[color:var(--color-line)] px-4 py-2 text-sm text-ink hover:border-[color:var(--color-line-strong)]"
-            >
-              ← Prev
-            </Link>
-          )}
-          {page < totalPages && (
-            <Link
-              href={pageHref(page + 1)}
-              className="rounded-lg border border-[color:var(--color-line)] px-4 py-2 text-sm text-ink hover:border-[color:var(--color-line-strong)]"
-            >
-              Next →
-            </Link>
-          )}
-        </nav>
-      )}
-    </div>
+      {content}
+    </main>
   );
 }

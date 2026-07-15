@@ -3,6 +3,8 @@ import { auth, isAllowedAdmin } from '@/lib/auth/config';
 import { listLeadsForExport } from '@/lib/db/queries/admin';
 import { parseLeadFilters } from '@/lib/admin/filters';
 import { toCsv } from '@/lib/admin/csv';
+import { istDateKey } from '@/lib/admin/time';
+import { localAdminPreviewAllowed } from '@/lib/auth/local-preview';
 
 /**
  * CSV export of the current filtered view (plan §15). This is the ONE place raw contact
@@ -11,7 +13,7 @@ import { toCsv } from '@/lib/admin/csv';
  */
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!isAllowedAdmin(session)) {
+  if (!isAllowedAdmin(session) && !localAdminPreviewAllowed(req.headers.get('host'))) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
   );
   const rows = await listLeadsForExport(filters);
   const csv = toCsv(rows);
-  const date = new Date().toISOString().slice(0, 10);
+  const date = istDateKey(new Date());
 
   return new Response(csv, {
     headers: {
