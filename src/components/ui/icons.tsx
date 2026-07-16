@@ -139,6 +139,14 @@ export const ArrowRightIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** Share: an arrow leaving an open tray — quiet, editorial, no social-network glyphs. */
+export const ShareIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 14V4M8.5 7.5 12 4l3.5 3.5" />
+    <path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+  </Svg>
+);
+
 /** Icon per taxonomy group id (shared by job-seeker + recruiter accordions). */
 export const GROUP_ICON: Record<string, (p: IconProps) => React.ReactElement> = {
   creative_production: FilmIcon,

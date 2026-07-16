@@ -42,7 +42,7 @@ function Contactability({ row }: { row: AdminLeadRow }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       <Badge good={row.emailVerificationStatus === 'verified'}>Email {row.emailVerificationStatus}</Badge>
-      {row.phoneE164 ? <Badge good={row.phoneVerificationStatus === 'verified'}>Phone {row.phoneVerificationStatus}</Badge> : <Badge>No phone</Badge>}
+      {row.phoneE164 ? <Badge good>{row.phoneVerificationStatus === 'verified' ? 'Phone verified (legacy)' : 'Phone supplied'}</Badge> : <Badge>No phone</Badge>}
     </div>
   );
 }

@@ -708,7 +708,7 @@ export async function getDashboardAnalytics(
       stage('email_verified', 'Verified email'),
       { key: 'email_unverified', label: 'Email pending / unverified', count: total - numberOf(funnelRaw.email_verified), percentage: readablePercent(total - numberOf(funnelRaw.email_verified), total) },
       stage('phone_supplied', 'Phone supplied'),
-      stage('phone_verified', 'Phone verified'),
+      stage('phone_verified', 'Phone verified (legacy)', 'No longer part of the flow'),
       stage('email_verified', 'Contactable by verified email'),
     ],
     seekerRelevantLeads: seekerRelevant,

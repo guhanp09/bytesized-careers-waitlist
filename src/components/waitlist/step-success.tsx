@@ -1,65 +1,97 @@
 'use client';
 
 import { useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Button } from '@/components/ui/button';
-import { CheckCircleIcon } from '@/components/ui/icons';
+import { ShareIcon } from '@/components/ui/icons';
+import {
+  SUCCESS_HEADLINES,
+  SUCCESS_HEADLINE_FALLBACK,
+  SUCCESS_BODY,
+} from '@/lib/copy/flow-copy';
 import type { Role } from '@/types/waitlist';
 
 interface StepSuccessProps {
   role: Role | null;
 }
 
-const HEADLINE_BY_ROLE: Record<Role, string> = {
-  seeker: "You're in. We'll reach out the moment the right creator-economy work appears.",
-  recruiter: "You're in. We'll introduce you to matching talent as soon as we launch.",
-  both: "You're in. We'll keep you posted from both sides of the marketplace.",
-};
+/**
+ * A drawn check inside a thin ring — the ring fades up, the tick draws itself once,
+ * quietly. The "Filed" stamp lives on the brief document where it belongs; this card
+ * speaks to the person. Instant under reduced motion.
+ */
+function SuccessMark() {
+  const reduce = useReducedMotion();
+  return (
+    <motion.svg
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-hidden="true"
+      className="size-12 text-success"
+      initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <circle cx="24" cy="24" r="21.5" stroke="currentColor" strokeOpacity="0.35" />
+      <motion.path
+        d="M15 24.5l6.2 6L33 18"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={reduce ? false : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 0.5, delay: reduce ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </motion.svg>
+  );
+}
 
 /**
- * Step 5 — success (plan §5, §6). Role-aware confirmation, what-happens-next, and a tasteful
- * share action. No account creation, no further asks. Says "on the list", never "verified".
+ * Act IV — the brief is filed (stamped on the document itself); here the person gets the
+ * confirmation. Role-aware headline, honest framing, and a tasteful share action. No
+ * account creation, no further asks.
  */
 export function StepSuccess({ role }: StepSuccessProps) {
   const [copied, setCopied] = useState(false);
 
-  const headline = role
-    ? HEADLINE_BY_ROLE[role]
-    : "You're on the list. We'll let you know when early access opens up.";
+  const headline = role ? SUCCESS_HEADLINES[role] : SUCCESS_HEADLINE_FALLBACK;
 
   async function handleShare() {
+    const url =
+      typeof window !== 'undefined' ? window.location.origin : 'https://bytesizedcareers.com';
     try {
-      const url =
-        typeof window !== 'undefined' ? window.location.origin : 'https://bytesizedcareers.com';
+      if (navigator.share) {
+        await navigator.share({ title: 'ByteSized Careers', url });
+        return;
+      }
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard may be unavailable — no-op.
+      // Share sheet dismissed or clipboard unavailable — no-op.
     }
   }
 
   return (
     <div className="flex flex-col items-start gap-4 py-2">
-      <span
-        aria-hidden="true"
-        className="flex size-11 items-center justify-center rounded-full bg-accent/15 text-accent"
-      >
-        <CheckCircleIcon className="size-6" />
-      </span>
+      <SuccessMark />
 
-      <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink text-balance">
+      <h2
+        data-step-heading
+        tabIndex={-1}
+        className="font-serif text-2xl tracking-tight text-ink text-balance"
+      >
         {headline}
       </h2>
 
-      <p className="text-sm leading-relaxed text-muted">
-        You&apos;re part of the founding cohort. No account, no noise — just an
-        email when something genuinely fits.
-      </p>
+      <p className="text-sm leading-relaxed text-muted">{SUCCESS_BODY}</p>
 
       <div className="mt-2 flex w-full flex-col gap-3 border-t border-[color:var(--color-line)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted">Know someone who&apos;d want this?</p>
+        <p className="text-sm text-muted">Know someone whose brief belongs here?</p>
         <Button variant="secondary" onClick={handleShare}>
-          {copied ? 'Link copied ✓' : 'Copy link'}
+          <ShareIcon className="size-4" />
+          {copied ? 'Link copied ✓' : 'Share'}
         </Button>
       </div>
     </div>

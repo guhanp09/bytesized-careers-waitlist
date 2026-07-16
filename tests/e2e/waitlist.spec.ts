@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { SUCCESS_HEADLINES } from '../../src/lib/copy/flow-copy';
 
 function uniqueEmail(tag: string): string {
   return `e2e.${tag}.${Date.now()}@example.com`;
@@ -29,7 +30,7 @@ async function expectInViewport(locator: Locator) {
     .toBe(true);
 }
 
-test('completes the full v2 flow with mock email + phone verification', async ({ page }) => {
+test('completes the full v2 flow with mock email and validated phone capture', async ({ page }) => {
   await page.goto('/');
   await fillFirstStep(page, uniqueEmail('full'), 'Asha Kapoor');
   await page.click('button[type="submit"]');
@@ -55,21 +56,24 @@ test('completes the full v2 flow with mock email + phone verification', async ({
   await page.getByRole('heading', { name: /Get first dibs on WhatsApp/ }).waitFor();
   await expect(page.locator('#whatsapp-consent')).toHaveCount(0);
   await page.selectOption('#country', 'GB');
+  // A malformed number is rejected with a clear validation error…
+  await page.fill('#phone', '123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.locator('#phone-error')).toBeVisible();
+  // …then a plausible one is normalized and saved — validate + save, never verify.
   await page.fill('#phone', '7400123456');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
-  // Phone verification (dev code).
-  await page.getByRole('heading', { name: 'Verify your number' }).waitFor();
-  await page.fill('#verify-code', await readDevCode(page));
+  // No OTP challenge exists: the flow moves straight to the final note.
+  await expect(page.getByRole('heading', { name: 'Verify your number' })).toHaveCount(0);
+  await expect(page.getByText(/We sent a code|code sent/i)).toHaveCount(0);
 
   // Final note — leave empty, finish.
   await page.getByRole('heading', { name: /genuinely useful to you/ }).waitFor();
   await page.getByRole('button', { name: 'Finish' }).click();
 
   await expect(
-    page.getByRole('heading', {
-      name: /We'll reach out the moment the right creator-economy work appears/,
-    }),
+    page.getByRole('heading', { name: SUCCESS_HEADLINES.seeker }),
   ).toBeVisible();
 });
 
@@ -115,10 +119,32 @@ test('ambient background is decorative and never blocks the form', async ({ page
   await expect(bg).toHaveAttribute('aria-hidden', 'true');
   const pointerEvents = await bg.evaluate((el) => getComputedStyle(el).pointerEvents);
   expect(pointerEvents).toBe('none');
+  // The noise layer is DOM/CSS only — the old canvas is gone for good.
+  await expect(page.locator('canvas')).toHaveCount(0);
   // Form still fully usable over the background.
   await fillFirstStep(page, `e2e.bg.${Date.now()}@example.com`);
   await page.click('button[type="submit"]');
   await expect(page.getByRole('button', { name: /looking for work/ })).toBeVisible();
+});
+
+test('progress is qualitative — no numeric "X of Y" count anywhere in the flow', async ({
+  page,
+}) => {
+  const noCount = async () => {
+    const body = await page.locator('body').innerText();
+    expect(body).not.toMatch(/\b\d+\s+of\s+\d+\b/i);
+  };
+  await page.goto('/');
+  await noCount();
+  await fillFirstStep(page, uniqueEmail('nocount'));
+  await page.click('button[type="submit"]');
+  await page.getByRole('button', { name: /looking for work/ }).waitFor();
+  await noCount();
+  await page.getByRole('button', { name: /looking for work/ }).click();
+  await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
+  await noCount();
+  // Qualitative progression is present instead.
+  await expect(page.getByText('Your brief is taking shape').first()).toBeVisible();
 });
 
 test('reduced motion still renders and advances the flow', async ({ page }) => {

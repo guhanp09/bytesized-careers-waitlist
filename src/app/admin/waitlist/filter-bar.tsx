@@ -38,7 +38,7 @@ export function FilterBar({ filters, sources, campaigns }: FilterBarProps) {
     filters.completion && `Funnel: ${filters.completion.replace('_', ' ')}`,
     filters.verification && `Email: ${filters.verification}`,
     filters.phonePresent !== undefined && `Phone: ${filters.phonePresent ? 'present' : 'absent'}`,
-    filters.phoneVerified !== undefined && `Phone: ${filters.phoneVerified ? 'verified' : 'not verified'}`,
+    filters.phoneVerified !== undefined && `Phone verification (legacy): ${filters.phoneVerified ? "verified" : "not verified"}`,
     filters.seekerGroup && `Seeker: ${CATEGORY_GROUP_LABELS[filters.seekerGroup as keyof typeof CATEGORY_GROUP_LABELS] ?? filters.seekerGroup}`,
     filters.seekerNeed && `Seeker work: ${JOB_CATEGORY_LABELS[filters.seekerNeed as keyof typeof JOB_CATEGORY_LABELS] ?? filters.seekerNeed}`,
     filters.recruiterGroup && `Recruiter: ${CATEGORY_GROUP_LABELS[filters.recruiterGroup as keyof typeof CATEGORY_GROUP_LABELS] ?? filters.recruiterGroup}`,
@@ -166,7 +166,7 @@ export function FilterBar({ filters, sources, campaigns }: FilterBarProps) {
             </select>
           </label>
           <label className={fieldClass}>
-            Phone verification
+            Phone verification (legacy)
             <select name="phoneVerified" defaultValue={filters.phoneVerified === undefined ? '' : String(filters.phoneVerified)} className={controlClass}>
               <BooleanOptions yes="Verified" no="Not verified" />
             </select>

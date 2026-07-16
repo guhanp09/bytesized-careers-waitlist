@@ -5,6 +5,10 @@ export interface RenderedEmail {
   text: string;
 }
 
+/** Stable public asset URL. Email clients cannot resolve local or relative asset paths. */
+export const EMAIL_LOGO_URL =
+  'https://bytesizedcareers.com/brand/bytesized-careers-mark-email.png';
+
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
@@ -39,7 +43,7 @@ export function renderTransactionalEmail(
     : '';
   return {
     text: [
-      'Confirm your email for ByteSized Careers',
+      'ByteSized Careers — confirm your email',
       '',
       greetingText.trimEnd(),
       `Your verification code is ${code}.`,
@@ -51,7 +55,10 @@ export function renderTransactionalEmail(
 <html lang="en">
   <body style="margin:0;background:#0b0d12;color:#f2f0ec;font-family:Inter,Arial,sans-serif">
     <div style="max-width:560px;margin:0 auto;padding:40px 24px">
-        <p style="margin:0 0 28px;font-size:14px;font-weight:600">ByteSized Careers</p>
+        <div style="margin:0 0 28px">
+          <img src="${EMAIL_LOGO_URL}" width="48" height="48" alt="ByteSized Careers logo" style="display:block;width:48px;height:48px;border:0;margin:0 0 12px" />
+          <p style="margin:0;color:#f2f0ec;font-size:14px;font-weight:600">ByteSized Careers</p>
+        </div>
       <div style="border:1px solid #2b2f39;border-radius:16px;background:#14161c;padding:28px">
         <p style="margin:0 0 8px;color:#5b8cff;font-size:13px;font-weight:600;letter-spacing:.04em">EMAIL CONFIRMATION</p>
         <h1 style="margin:0 0 12px;font-size:24px;line-height:1.25">Confirm your email</h1>

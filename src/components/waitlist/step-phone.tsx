@@ -25,9 +25,9 @@ function detectDefaultCountry(): string {
 }
 
 /**
- * Phone step (v2 refined). Benefit-first, no "optional"/"skip" framing — a single confident
- * Continue; leaving the field empty simply moves on. We collect and separately verify the
- * number, but do not accept or imply promotional consent.
+ * Phone step: validate + save only. The number is normalized (E.164) and stored — never
+ * challenged with a code, and never implied to be verified. Leaving the field empty simply
+ * moves on. No promotional consent is accepted or implied.
  */
 export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
   const [countryIso, setCountryIso] = useState(detectDefaultCountry);
@@ -69,18 +69,18 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
           <PhoneIcon className="size-5" />
         </span>
         <div>
-          <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink">
+          <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
             Get first dibs on WhatsApp
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Add your number and we&apos;ll ping you the moment a match appears —
+            Add your number and you&apos;ll hear first as matching opens —
             before it hits your inbox.
           </p>
         </div>
       </div>
 
       <div className="flex flex-col gap-3">
-        <label htmlFor="phone" className="text-sm font-medium text-muted">
+        <label htmlFor="phone" className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted">
           Your number
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">

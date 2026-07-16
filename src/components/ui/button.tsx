@@ -11,7 +11,7 @@ export interface ButtonProps
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors duration-200 ' +
+  'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors duration-200 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 

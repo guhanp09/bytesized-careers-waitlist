@@ -155,7 +155,7 @@ export function StepContext({ leadId, resumeToken, role, data, onChange, onCompl
           <LayersIcon className="size-5" />
         </span>
         <div>
-          <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink">{heading}</h2>
+          <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">{heading}</h2>
           <p className="mt-1 text-sm text-muted">
             The more we know, the sharper your first matches. Add whatever feels right.
           </p>

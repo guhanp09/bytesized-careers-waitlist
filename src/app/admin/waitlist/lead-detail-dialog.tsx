@@ -161,7 +161,7 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
             <Field label="Phone ownership">{lead.phoneE164 ? lead.phoneVerificationStatus : 'Not applicable'}</Field>
             <Field label="Phone verification requested">{formatIstDateTime(lead.phoneVerificationRequestedAt)}</Field>
             <Field label="Phone code last sent">{formatIstDateTime(lead.phoneVerificationLastSentAt)}</Field>
-            <Field label="Phone verified">{formatIstDateTime(lead.phoneVerifiedAt)}</Field>
+            <Field label="Phone verified (legacy)">{formatIstDateTime(lead.phoneVerifiedAt)}</Field>
           </dl>
         </Section>
 

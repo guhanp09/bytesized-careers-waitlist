@@ -21,11 +21,11 @@ export function ResumePrompt({
   return (
     <div className="flex flex-col gap-4 py-2">
       <div>
-        <h2 data-step-heading tabIndex={-1} className="text-lg font-semibold tracking-tight text-ink">
+        <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
           Welcome back
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Continue where you left off as{' '}
+          Your brief is where you left it. Continue as{' '}
           <span className="text-ink">{emailMasked}</span>?
         </p>
       </div>

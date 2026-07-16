@@ -87,7 +87,7 @@ describe('admin lead presentation', () => {
     expect(screen.getByText(/A long, specific note that must remain fully readable/)).toBeInTheDocument();
     expect(screen.getByText('Looking for work and hiring talent')).toBeInTheDocument();
     expect(screen.getByText('Email verification requested')).toBeInTheDocument();
-    expect(screen.getAllByText('Phone verified').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Phone verified (legacy)').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/IST/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/WhatsApp consent/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/token|hash|provider message/i)).not.toBeInTheDocument();

@@ -74,8 +74,8 @@ export function StepNote({ leadId, resumeToken, role, value, onChange, onComplet
           <MessageIcon className="size-5" />
         </span>
         <div>
-          <p className="text-sm font-medium tracking-wide text-accent">One last thing</p>
-          <h2 data-step-heading tabIndex={-1} className="mt-1 text-xl font-semibold tracking-tight text-ink text-balance">
+          <p className="font-mono text-[11px] font-medium tracking-[0.18em] uppercase text-accent">One last thing</p>
+          <h2 data-step-heading tabIndex={-1} className="mt-1 font-serif text-2xl tracking-tight text-ink text-balance">
             {copy.heading}
           </h2>
         </div>

@@ -156,7 +156,7 @@ export function StepPreferences({
           {showWork ? <CompassIcon className="size-5" /> : <UserPlusIcon className="size-5" />}
         </span>
         <div>
-          <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink">{heading}</h2>
+          <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">{heading}</h2>
           <p className="mt-1 text-sm text-muted">{subcopy}</p>
         </div>
       </div>

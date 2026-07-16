@@ -41,6 +41,19 @@ LOCAL_VERIFICATION_ENABLED=false
 - Rate limits cover pepper-hashed IP, lead, and normalized-email scopes. Raw IPs and email
   addresses are never written to the rate-limit table.
 
+## Verification-email branding
+
+Verification messages include the canonical ByteSized Careers mark at the stable public URL
+`https://bytesizedcareers.com/brand/bytesized-careers-mark-email.png`. The HTML version uses
+an absolute HTTPS PNG with meaningful alt text; the plain-text version names ByteSized Careers
+and remains complete when images are blocked. The public page, favicon, Apple touch icon, social
+preview, and email all derive from the same double-ruled serif-B mark.
+
+The image inside the message is email-body branding, not a sender avatar. Inbox avatars are
+controlled by each mailbox provider. Cross-provider brand indicators generally require aligned
+DMARC enforcement plus BIMI evidence, often a paid Common Mark Certificate (CMC) or Verified
+Mark Certificate (VMC), and are not enabled by this repository.
+
 ## External Resend and DNS checkpoint
 
 Do not enable real delivery until all steps below are complete:

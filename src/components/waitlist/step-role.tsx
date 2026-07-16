@@ -74,7 +74,7 @@ export function StepRole({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold tracking-tight text-ink">
+        <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
           First — what brings you here?
         </h2>
         <p className="mt-1 text-sm text-muted">

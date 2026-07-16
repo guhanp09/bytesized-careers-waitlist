@@ -12,18 +12,24 @@ import { StepNote } from './step-note';
 import { StepSuccess } from './step-success';
 import { ResumePrompt } from './resume-prompt';
 import { ProgressIndicator } from './progress-indicator';
-import { useAmbient } from './ambient-context';
+import { useBrief } from '@/components/brief/brief-context';
+import type { BriefSnapshot } from '@/components/brief/brief-model';
 import type { SubmitEmailData } from '@/lib/actions/submit-email';
 import { getLeadForResume } from '@/lib/actions/resume-lead';
 import { requestEmailCode, submitEmailCode } from '@/lib/actions/verify-email';
-import { requestPhoneCode, submitPhoneCode } from '@/lib/actions/verify-phone';
 import { saveResume, loadResume, clearResume } from '@/lib/utils/resume-storage';
+import { ACT_LABELS, ACT_NAMES } from '@/lib/copy/flow-copy';
 import type { Role } from '@/types/waitlist';
 
 /**
- * Client orchestrator (v2). Save-first funnel with deferred, non-blocking verification:
- * 1 email → 2 role → 3 interests → 4 email verify → 5 context → 6 phone → 7 phone verify
- * → 8 note → 9 success.
+ * Client orchestrator (v2). Save-first funnel with deferred, non-blocking email
+ * verification: 1 email → 2 role → 3 interests → 4 email verify → 5 context → 6 phone
+ * (validate + save only) → 8 note → 9 success.
+ *
+ * Step 7 (phone verification) has been retired from the public flow: numbers are
+ * normalized and saved, never challenged. The numbering is kept so stored
+ * lastCompletedStep values and legacy resume states stay valid — 7 is simply never
+ * entered, and any historic resume pointing at it forwards to 8.
  */
 const TOTAL_STEPS = 9;
 
@@ -68,16 +74,15 @@ const initialData: FlowData = {
 function resumeStepFrom(
   lastCompletedStep: number,
   emailVerified: boolean,
-  hasPhone: boolean,
-  phoneVerified: boolean,
 ): number {
   if (lastCompletedStep <= 1) return 2;
   if (lastCompletedStep === 2) return 3;
   if (lastCompletedStep === 3) return emailVerified ? 5 : 4;
   if (lastCompletedStep === 4) return 5;
   if (lastCompletedStep === 5) return 6;
-  if (lastCompletedStep === 6) return hasPhone && !phoneVerified ? 7 : 8;
-  if (lastCompletedStep === 7) return 8;
+  // Phone verification is retired: after the phone step (6) — and for any legacy lead
+  // whose resume state points at the old verify step (7) — continue straight to the note.
+  if (lastCompletedStep === 6 || lastCompletedStep === 7) return 8;
   if (lastCompletedStep >= 8) return 9;
   return 2;
 }
@@ -106,16 +111,44 @@ export function WaitlistFlow() {
     setStep(nextStep);
   }, []);
 
-  // Feed funnel state to the ambient background (setters are stable).
-  const ambient = useAmbient();
-  const setAmbientProgress = ambient?.setProgress;
-  const setAmbientRole = ambient?.setRole;
+  // Feed public funnel state to the presentation layer (setters are stable).
+  const brief = useBrief();
+  const setBriefStep = brief?.setStep;
+  const setBriefProgress = brief?.setProgress;
+  const setBriefRole = brief?.setRole;
+  const setBriefSnapshot = brief?.setSnapshot;
   useEffect(() => {
-    setAmbientProgress?.(Math.min((step - 1) / (TOTAL_STEPS - 1), 1));
-  }, [step, setAmbientProgress]);
+    setBriefStep?.(step);
+    setBriefProgress?.(Math.min((step - 1) / (TOTAL_STEPS - 1), 1));
+  }, [step, setBriefStep, setBriefProgress]);
   useEffect(() => {
-    setAmbientRole?.(data.role);
-  }, [data.role, setAmbientRole]);
+    setBriefRole?.(data.role);
+  }, [data.role, setBriefRole]);
+  // Token-free snapshot for the brief artifact: leadId/resumeToken never leave the flow —
+  // only a short derived reference number.
+  useEffect(() => {
+    const snapshot: BriefSnapshot = {
+      refNo: data.leadId ? data.leadId.slice(0, 6).toUpperCase() : null,
+      fullName: data.fullName,
+      emailMasked: data.emailMasked,
+      role: data.role,
+      jobCategories: data.jobCategories,
+      talentCategories: data.talentCategories,
+      jobCategoryOthers: data.jobCategoryOthers,
+      talentCategoryOthers: data.talentCategoryOthers,
+      workFormats: data.workFormats,
+      organisationTypes: data.organisationTypes,
+      platforms: data.platforms,
+      niches: data.niches,
+      experienceLevel: data.experienceLevel,
+      availabilityToStart: data.availabilityToStart,
+      hiringTimeline: data.hiringTimeline,
+      teamSize: data.teamSize,
+      additionalNotes: data.additionalNotes,
+      phoneProvided: data.phoneProvided,
+    };
+    setBriefSnapshot?.(snapshot);
+  }, [data, setBriefSnapshot]);
 
   useEffect(() => {
     const record = loadResume();
@@ -156,14 +189,7 @@ export function WaitlistFlow() {
           emailMasked: s.emailMasked,
         }));
         setResumeEmailMasked(s.emailMasked);
-        setResumeNextStep(
-          resumeStepFrom(
-            s.lastCompletedStep,
-            s.emailVerified,
-            s.hasPhone,
-            s.phoneVerified,
-          ),
-        );
+        setResumeNextStep(resumeStepFrom(s.lastCompletedStep, s.emailVerified));
       },
     );
     return () => {
@@ -283,25 +309,9 @@ export function WaitlistFlow() {
           {...ctx}
           onComplete={(phoneProvided) => {
             merge({ phoneProvided });
-            navigate(phoneProvided ? 7 : 8);
+            // Numbers are validated and saved, never verified — continue to the note.
+            navigate(8);
           }}
-        />
-      );
-    }
-    if (step === 7) {
-      return (
-        <StepVerify
-          {...ctx}
-          channel="phone"
-          title="Verify your number"
-          benefit="Verify your number to get priority alerts the moment matching work appears."
-          targetLabel="your number"
-          requestCode={requestPhoneCode}
-          submitCode={submitPhoneCode}
-          onVerified={() => navigate(8)}
-          onSkip={() => navigate(8)}
-          onChangeContact={() => navigate(6)}
-          changeLabel="Change number"
         />
       );
     }
@@ -328,7 +338,7 @@ export function WaitlistFlow() {
       : `step-${step}`;
 
   const previousStep =
-    step === 8 && !data.phoneProvided ? 6 : step > 1 && step <= 8 ? step - 1 : null;
+    step === 8 ? 6 : step > 1 && step <= 7 ? step - 1 : null;
   const showBack = !resumeEmailMasked && (changingEmail || previousStep !== null);
 
   const handleBack = () => {
@@ -366,19 +376,19 @@ export function WaitlistFlow() {
       heading?.focus({ preventScroll: true });
       const headingText = heading?.textContent?.trim();
       if (headingText) {
-        const currentStep = currentStepRef.current;
-        setAnnouncement(
-          currentStep <= 8
-            ? `Step ${currentStep} of ${TOTAL_STEPS - 1}: ${headingText}`
-            : headingText,
-        );
+        // Chapter-based announcement — never a numeric "step X of Y" count.
+        const actName = ACT_NAMES[currentStepRef.current];
+        setAnnouncement(actName ? `${actName} — ${headingText}` : headingText);
       }
 
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
       const viewportOffset = viewport?.offsetTop ?? 0;
       const topGap = window.innerWidth < 640 ? 16 : 28;
-      const bottomGap = window.innerWidth < 640 ? 18 : 28;
+      // Below lg, leave clearance for the brief drawer pill so it never covers the CTA.
+      const pillClearance =
+        window.innerWidth < 1024 && currentStepRef.current >= 2 ? 64 : 0;
+      const bottomGap = (window.innerWidth < 640 ? 18 : 28) + pillClearance;
       const rect = card.getBoundingClientRect();
       const visibleTop = viewportOffset + topGap;
       const visibleBottom = viewportOffset + viewportHeight - bottomGap;
@@ -404,11 +414,19 @@ export function WaitlistFlow() {
   return (
     <div
       ref={cardRef}
-      className="w-full scroll-mt-4 rounded-2xl border border-[color:var(--color-line-strong)] bg-surface/85 p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_60px_-20px_rgba(0,0,0,0.7)] ring-1 ring-black/20 backdrop-blur-md sm:scroll-mt-7 sm:p-6"
+      className="w-full scroll-mt-4 rounded-md border border-[color:var(--color-line-strong)] bg-surface/85 p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_60px_-20px_rgba(0,0,0,0.7)] ring-1 ring-black/20 backdrop-blur-md sm:scroll-mt-7 sm:p-6"
     >
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
       </p>
+      {!resumeEmailMasked ? (
+        <p
+          aria-hidden="true"
+          className="mb-3 font-mono text-[10px] font-medium tracking-[0.2em] uppercase text-faint"
+        >
+          {ACT_LABELS[step] ?? ''}
+        </p>
+      ) : null}
       {showBack ? (
         <button
           type="button"
@@ -418,7 +436,7 @@ export function WaitlistFlow() {
           <span aria-hidden="true">←</span> Back
         </button>
       ) : null}
-      {showProgress && <ProgressIndicator step={step} total={TOTAL_STEPS} />}
+      {showProgress && <ProgressIndicator step={step} />}
       <motion.div layout={!reduce} style={{ overflow: 'hidden' }}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

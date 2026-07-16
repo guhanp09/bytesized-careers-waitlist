@@ -57,7 +57,7 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
       <h2 data-step-heading tabIndex={-1} className="sr-only">
         {changeSession ? 'Change your email' : 'Join the ByteSized Careers waitlist'}
       </h2>
-      <label htmlFor="full-name" className="text-sm font-medium text-muted">
+      <label htmlFor="full-name" className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted">
         Your name
       </label>
 
@@ -77,10 +77,10 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
         aria-invalid={hasError}
         aria-describedby={hasError ? 'email-error' : 'email-trust'}
         disabled={isPending}
-        className="h-13 w-full rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+        className="h-13 w-full rounded-md border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
       />
 
-      <label htmlFor="email" className="text-sm font-medium text-muted">
+      <label htmlFor="email" className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted">
         Email address
       </label>
 
@@ -101,7 +101,7 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
           aria-invalid={hasError}
           aria-describedby={hasError ? 'email-error' : 'email-trust'}
           disabled={isPending}
-          className="h-13 flex-1 rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          className="h-13 flex-1 rounded-md border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
         />
 
         <Button

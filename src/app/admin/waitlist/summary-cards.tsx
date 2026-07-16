@@ -29,7 +29,7 @@ export function SummaryCards({ summary }: SummaryCardsProps) {
       <Stat label="Verified email" value={summary.verified} detail={`${readablePercent(summary.verified, summary.total)}% contactable`} />
       <Stat label="Unverified email" value={summary.unverified} detail="Includes pending / bounced" />
       <Stat label="Phone supplied" value={summary.phonePresent} detail={`${readablePercent(summary.phonePresent, summary.total)}% of leads`} />
-      <Stat label="Verified phone" value={summary.phoneVerified} />
+      <Stat label="Phone verified (legacy)" value={summary.phoneVerified} />
       <Stat label="Job seekers" value={summary.seekers} />
       <Stat label="Recruiters" value={summary.recruiters} />
       <Stat label="Both" value={summary.both} />

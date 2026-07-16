@@ -32,6 +32,16 @@
   /* Type */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* "The Brief" paper artifact — the only light surface on the page. Dimmed to sit inside
+     the dark atmosphere (aged paper, not white stock); ink on paper still ≈9.5:1. */
+  --color-paper: #d3cdbf;
+  --color-paper-ink: #211f1b;
+  --color-paper-faint: rgba(33, 31, 27, 0.62);
+  --color-paper-line: rgba(33, 31, 27, 0.18);
+  --color-stamp: #a34a32; /* oxide red, stamp + filed accents only */
 
   /* Motion easing (expo-out — premium, no bounce) */
   --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
@@ -289,27 +299,114 @@
   animation: admin-line-in 800ms var(--ease-premium) both;
 }
 
-/* A single, pre-rendered creator-economy tapestry breathes almost imperceptibly as ink.
-   Opacity-only motion avoids repainting the canvas or transforming a page-sized GPU layer. */
-@keyframes bsc-tapestry-breathe {
-  0%,
-  100% {
-    opacity: 0.88;
+/* ---------------------------------------------------------------------------
+   "The Brief" art direction
+   --------------------------------------------------------------------------- */
+
+/* Hero scatter→align: each word starts at an authored offset (--dx/--dy/--rot, set inline)
+   and typesets into place. Transform/opacity/filter only — words occupy their final layout
+   boxes from first paint, so there is zero layout shift. Runs once. */
+@keyframes bsc-typeset {
+  from {
+    transform: translate(var(--dx, 0), var(--dy, 0)) rotate(var(--rot, 0deg));
+    opacity: 0.2;
+    filter: blur(2px);
   }
-  50% {
+  to {
+    transform: none;
     opacity: 1;
+    filter: none;
   }
 }
 
-.creator-tapestry {
-  animation: bsc-tapestry-breathe 18s var(--ease-premium) infinite;
+.hero-word {
+  display: inline-block;
+  white-space: pre;
+  animation: bsc-typeset 0.9s var(--ease-premium) both;
+  animation-delay: calc(0.12s + var(--i, 0) * 55ms);
+}
+
+/* Margin scraps — the "noise" of scattered hiring. One shared keyframe pair; per-scrap
+   duration/delay via custom props. Compositor-only; browsers skip painting hidden tabs. */
+@keyframes bsc-drift-a {
+  from {
+    transform: translate(0, 0) rotate(var(--scrap-rot, 0deg));
+  }
+  to {
+    transform: translate(6px, -9px) rotate(calc(var(--scrap-rot, 0deg) + 1deg));
+  }
+}
+@keyframes bsc-drift-b {
+  from {
+    transform: translate(0, 0) rotate(var(--scrap-rot, 0deg));
+  }
+  to {
+    transform: translate(-7px, 7px) rotate(calc(var(--scrap-rot, 0deg) - 1.2deg));
+  }
+}
+
+.scrap {
+  position: absolute;
+  max-width: 18ch;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-ink);
+  opacity: 0.09;
+  animation: var(--scrap-anim, bsc-drift-a) var(--scrap-dur, 34s) ease-in-out
+    var(--scrap-delay, 0s) infinite alternate;
+}
+
+/* The paper artifact — the one light surface. Slight edge shading + rule lines sell the
+   document without images. Focus rings inside paper switch to paper-ink (accent is <3:1). */
+.brief-paper {
+  position: relative;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.16), transparent 32%),
+    linear-gradient(to bottom, var(--color-paper), color-mix(in srgb, var(--color-paper) 94%, black));
+  color: var(--color-paper-ink);
+  border-radius: 2px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 40px -18px rgba(0, 0, 0, 0.85),
+    0 30px 80px -40px rgba(0, 0, 0, 0.7);
+}
+
+.brief-paper :focus-visible {
+  outline-color: var(--color-paper-ink);
+}
+
+.brief-rule {
+  border-top: 1px solid var(--color-paper-line);
+}
+
+.brief-pending {
+  border-bottom: 1px dotted var(--color-paper-line);
+}
+
+/* FILED stamp — oxide-red double ring, rotated like a real hand stamp. */
+.brief-stamp {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid var(--color-stamp);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-stamp) 55%, transparent);
+  color: var(--color-stamp);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(-7deg);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect width='100%25' height='100%25' filter='url(%23r)'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' fill='white'/%3E%3Crect width='100%25' height='100%25' filter='url(%23r)'/%3E%3C/svg%3E");
 }
 
 /* Respect reduced-motion at the platform level as a safety net beyond JS gating. */
 @media (prefers-reduced-motion: reduce) {
-  .creator-tapestry {
+  .hero-word,
+  .scrap {
     animation: none !important;
-    opacity: 0.94;
   }
 
   *,

@@ -33,6 +33,18 @@ for (const vp of VIEWPORTS) {
     await page.waitForTimeout(300);
     await expect.poll(overflows).toBe(false);
 
+    // The brief drawer: pill present, sheet opens and closes without overflow.
+    const pill = page.locator('[data-brief-pill]');
+    await expect(pill).toBeVisible();
+    await pill.click();
+    await page.waitForTimeout(350);
+    await expect.poll(overflows).toBe(false);
+    await page
+      .locator('[data-brief-sheet]')
+      .getByRole('button', { name: /close/i })
+      .click();
+    await expect(page.locator('[data-brief-sheet]')).toHaveCount(0);
+
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     const heading = page.getByRole('heading', { name: 'Confirm your email' });

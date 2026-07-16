@@ -71,6 +71,11 @@ describe('Resend adapter', () => {
     expect(body.text).toContain('expires in 10 minutes');
     expect(body.html).toContain('Hi Taylor Morgan');
     expect(body.text).toContain('Hi Taylor Morgan');
+    expect(body.html).toContain(
+      'https://bytesizedcareers.com/brand/bytesized-careers-mark-email.png',
+    );
+    expect(body.html).toContain('alt="ByteSized Careers logo"');
+    expect(body.text).toContain('ByteSized Careers — confirm your email');
   });
 
   it('escapes a personalized greeting in both formats', async () => {

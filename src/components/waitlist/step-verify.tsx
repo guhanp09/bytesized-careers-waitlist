@@ -180,7 +180,7 @@ export function StepVerify({
         <h2
           data-step-heading
           tabIndex={-1}
-          className="text-xl font-semibold tracking-tight text-ink"
+          className="font-serif text-2xl tracking-tight text-ink"
         >
           {title}
         </h2>
@@ -195,7 +195,7 @@ export function StepVerify({
         <span className="flex size-11 items-center justify-center rounded-full bg-success/15 text-success">
           <CheckCircleIcon className="size-6" />
         </span>
-        <h2 data-step-heading tabIndex={-1} className="text-xl font-semibold text-ink">
+        <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
           {channel === 'email' ? 'Email confirmed' : 'Number confirmed'}
         </h2>
         <p className="text-sm text-muted">All set — taking you to the next step.</p>
