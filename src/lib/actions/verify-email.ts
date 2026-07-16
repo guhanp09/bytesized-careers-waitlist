@@ -18,7 +18,7 @@ import {
 } from '@/lib/verification/code';
 import {
   getVerificationProvider,
-  verificationAvailable,
+  verificationAvailability,
 } from '@/lib/verification/providers';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/utils/logger';
@@ -73,7 +73,15 @@ export async function requestEmailCode(input: {
       });
     }
 
-    if (!verificationAvailable('email')) {
+    const availability = verificationAvailability('email');
+    if (!availability.available) {
+      // This is intentionally configuration-safe telemetry. It makes a fail-closed
+      // Production fallback diagnosable without logging a secret, address, or code.
+      logger.warn({
+        event: 'email_verification_unavailable',
+        leadId: parsed.data.leadId,
+        reason: availability.reason,
+      });
       return actionOk({
         available: false,
         channel: 'email',

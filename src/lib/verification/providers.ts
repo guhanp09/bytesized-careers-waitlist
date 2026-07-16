@@ -25,6 +25,24 @@ export interface VerificationProvider {
   send(input: SendVerificationInput): Promise<SendVerificationResult>;
 }
 
+export type VerificationAvailability =
+  | { available: true; mode: 'local' | 'resend' }
+  | {
+      available: false;
+      reason:
+        | 'verification_disabled'
+        | 'email_delivery_disabled'
+        | 'resend_not_configured'
+        | 'unsupported_channel';
+    };
+
+export interface VerificationAvailabilityConfig {
+  emailVerificationEnabled: boolean;
+  localVerificationEnabled: boolean;
+  emailDeliveryEnabled: boolean;
+  resendConfigured: boolean;
+}
+
 function maskTo(to: string, channel: VerificationChannel): string {
   if (channel === 'email') {
     const at = to.indexOf('@');
@@ -70,10 +88,37 @@ const realEmailProvider: VerificationProvider = {
   },
 };
 
+/**
+ * Resolve the verification transport without exposing any configuration values.
+ * The reason is deliberately safe for production logs: it identifies a feature
+ * gate, never a key, address, token, or provider response.
+ */
+export function resolveVerificationAvailability(
+  channel: 'email' | 'phone',
+  config: VerificationAvailabilityConfig,
+): VerificationAvailability {
+  if (!config.emailVerificationEnabled) {
+    return { available: false, reason: 'verification_disabled' };
+  }
+  if (config.localVerificationEnabled) return { available: true, mode: 'local' };
+  if (channel !== 'email') return { available: false, reason: 'unsupported_channel' };
+  if (!config.emailDeliveryEnabled) {
+    return { available: false, reason: 'email_delivery_disabled' };
+  }
+  if (!config.resendConfigured) {
+    return { available: false, reason: 'resend_not_configured' };
+  }
+  return { available: true, mode: 'resend' };
+}
+
+export function verificationAvailability(
+  channel: 'email' | 'phone',
+): VerificationAvailability {
+  return resolveVerificationAvailability(channel, env);
+}
+
 export function verificationAvailable(channel: 'email' | 'phone'): boolean {
-  if (!env.emailVerificationEnabled) return false;
-  if (env.localVerificationEnabled) return true;
-  return channel === 'email' && env.emailDeliveryEnabled && env.resendConfigured;
+  return verificationAvailability(channel).available;
 }
 
 export function getVerificationProvider(
