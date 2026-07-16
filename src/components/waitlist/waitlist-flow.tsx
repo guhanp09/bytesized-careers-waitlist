@@ -414,7 +414,8 @@ export function WaitlistFlow() {
   return (
     <div
       ref={cardRef}
-      className="w-full scroll-mt-4 rounded-md border border-[color:var(--color-line-strong)] bg-surface/85 p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_60px_-20px_rgba(0,0,0,0.7)] ring-1 ring-black/20 backdrop-blur-md sm:scroll-mt-7 sm:p-6"
+      data-waitlist-card
+      className="w-full scroll-mt-4 rounded-md border border-[color:var(--color-line-strong)] bg-surface/85 p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_60px_-20px_rgba(0,0,0,0.7)] ring-1 ring-black/20 backdrop-blur-md min-[360px]:p-5 sm:scroll-mt-7 sm:p-6"
     >
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {announcement}
@@ -431,7 +432,7 @@ export function WaitlistFlow() {
         <button
           type="button"
           onClick={handleBack}
-          className="mb-3 inline-flex min-h-8 items-center gap-1 text-sm text-faint transition-colors hover:text-muted"
+          className="mb-3 inline-flex min-h-11 items-center gap-1 text-sm text-faint transition-colors hover:text-muted"
         >
           <span aria-hidden="true">←</span> Back
         </button>

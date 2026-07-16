@@ -80,6 +80,43 @@
   select {
     font: inherit;
   }
+
+  /* Keep browser autofill legible without changing the control's apparent dimensions. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--color-ink);
+    caret-color: var(--color-ink);
+    box-shadow: 0 0 0 1000px var(--color-surface) inset;
+    transition: background-color 9999s ease-out 0s;
+  }
+}
+
+/* Content remains comfortably inside notches/home indicators in viewport-fit=cover mode.
+   The baseline gutter is slightly tighter on phones, then returns to the desktop rhythm. */
+.safe-page-gutter {
+  padding-left: calc(1rem + env(safe-area-inset-left));
+  padding-right: calc(1rem + env(safe-area-inset-right));
+}
+
+.safe-masthead {
+  padding-top: calc(1.5rem + env(safe-area-inset-top));
+}
+
+.safe-footer {
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+}
+
+.safe-drawer-gutter {
+  padding-left: calc(0.75rem + env(safe-area-inset-left));
+  padding-right: calc(0.75rem + env(safe-area-inset-right));
+}
+
+@media (min-width: 640px) {
+  .safe-page-gutter {
+    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-right: calc(1.5rem + env(safe-area-inset-right));
+  }
 }
 
 /* Desktop affordance policy: native semantics determine the cursor. Keeping this in the

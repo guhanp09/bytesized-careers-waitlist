@@ -26,7 +26,7 @@ export default function Home() {
         <ScrapsLayer />
 
         {/* Masthead */}
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+        <header className="safe-page-gutter safe-masthead mx-auto flex max-w-6xl items-center justify-between pb-6">
           <span className="animate-fade-up flex items-center gap-2.5">
             <LogoMark />
             <span className="font-serif text-base font-semibold tracking-tight text-ink">
@@ -38,7 +38,7 @@ export default function Home() {
           </span>
         </header>
 
-        <main className="mx-auto max-w-6xl px-6 pb-20">
+        <main className="safe-page-gutter mx-auto max-w-6xl pb-20">
           {/* The companion column spans the entire editorial journey (hero → form →
               interlude → colophon), so the sticky brief accompanies every step instead of
               bottoming out when a later question scrolls into focus. */}
@@ -80,7 +80,7 @@ export default function Home() {
         </main>
 
         {/* Footer colophon */}
-        <footer className="mx-auto max-w-6xl px-6 py-10 text-sm text-faint">
+        <footer className="safe-page-gutter safe-footer mx-auto max-w-6xl pt-10 text-sm text-faint">
           <div className="flex flex-col items-start justify-between gap-4 border-t border-[color:var(--color-line)] pt-8 sm:flex-row sm:items-baseline">
             <span className="font-mono text-[11px] tracking-wide">
               © {new Date().getFullYear()} ByteSized Careers — set in Fraunces & Plex

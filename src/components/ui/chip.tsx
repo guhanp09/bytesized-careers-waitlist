@@ -22,7 +22,7 @@ export function Chip({ label, selected, onToggle, disabled = false }: ChipProps)
       disabled={disabled}
       onClick={onToggle}
       className={cn(
-        'rounded-full border px-4 py-2 text-sm transition-all duration-150',
+        'min-h-11 rounded-full border px-4 py-2 text-sm transition-all duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         'disabled:opacity-50',
         selected

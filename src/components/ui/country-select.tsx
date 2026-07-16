@@ -2,6 +2,8 @@
 
 import { useMemo } from 'react';
 import { getCountries, getCountryCallingCode } from 'libphonenumber-js';
+import { formControlClassName } from './form-control';
+import { cn } from '@/lib/utils/cn';
 
 interface CountrySelectProps {
   value: string;
@@ -38,7 +40,10 @@ export function CountrySelect({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label="Country calling code"
-      className="h-13 rounded-xl border border-[color:var(--color-line)] bg-surface px-3 text-sm text-ink focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+      className={cn(
+        formControlClassName,
+        'min-h-13 rounded-xl px-3 sm:w-auto sm:max-w-56',
+      )}
     >
       {options.map((option) => (
         <option key={option.iso} value={option.iso}>

@@ -2,6 +2,8 @@
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { OTHER_TEXT_MAX } from '@/lib/validation/constants';
+import { formControlClassName } from './form-control';
+import { cn } from '@/lib/utils/cn';
 
 interface OtherFieldProps {
   id: string;
@@ -50,7 +52,7 @@ export function OtherField({
               onChange={(e) => onChange(e.target.value)}
               onBlur={onCommit}
               placeholder="Type your answer…"
-              className="h-12 w-full rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className={cn(formControlClassName, 'rounded-xl')}
             />
           </div>
         </motion.div>

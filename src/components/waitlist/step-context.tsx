@@ -6,6 +6,8 @@ import { Chip } from '@/components/ui/chip';
 import { Button } from '@/components/ui/button';
 import { InlineStatus, type StatusState } from '@/components/ui/inline-status';
 import { OtherField } from '@/components/ui/other-field';
+import { formControlClassName } from '@/components/ui/form-control';
+import { cn } from '@/lib/utils/cn';
 import {
   LayersIcon, BriefcaseIcon, UserPlusIcon, FilmIcon, SparklesIcon,
   TrendingUpIcon, UsersIcon, ArrowRightIcon,
@@ -135,7 +137,7 @@ export function StepContext({ leadId, resumeToken, role, data, onChange, onCompl
         value={value}
         onChange={(e) => onChange({ [field]: e.target.value } as Partial<ContextData>)}
         onBlur={() => scheduleSave({ [field]: data[field] })}
-        className="h-12 w-full rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className={cn(formControlClassName, 'rounded-xl')}
       />
     </div>
   );

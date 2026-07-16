@@ -79,7 +79,7 @@ export function BriefDrawer() {
           <motion.div
             key="sheet"
             data-brief-sheet
-            className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+            className="safe-drawer-gutter fixed inset-x-0 bottom-0 z-40 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
             initial={reduce ? { opacity: 0 } : { y: '100%' }}
             animate={reduce ? { opacity: 1 } : { y: 0 }}
             exit={reduce ? { opacity: 0 } : { y: '100%' }}
@@ -92,7 +92,7 @@ export function BriefDrawer() {
               <button
                 type="button"
                 onClick={close}
-                className="min-h-10 px-3 font-mono text-[11px] tracking-[0.12em] uppercase text-[color:var(--color-paper-faint)] hover:text-[color:var(--color-paper-ink)]"
+                className="min-h-11 px-3 font-mono text-[11px] tracking-[0.12em] uppercase text-[color:var(--color-paper-faint)] hover:text-[color:var(--color-paper-ink)]"
               >
                 Close
               </button>
@@ -110,7 +110,7 @@ export function BriefDrawer() {
             data-brief-pill
             aria-expanded={open}
             onClick={() => setOpen(true)}
-            className="fixed bottom-[calc(0.9rem+env(safe-area-inset-bottom))] right-3 z-40 min-h-11 rounded-sm bg-[color:var(--color-paper)] px-3.5 font-mono text-[11px] font-medium tracking-[0.1em] uppercase text-[color:var(--color-paper-ink)] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)]"
+            className="fixed bottom-[calc(0.9rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-40 min-h-11 rounded-sm bg-[color:var(--color-paper)] px-3.5 font-mono text-[11px] font-medium tracking-[0.1em] uppercase text-[color:var(--color-paper-ink)] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)]"
             initial={reduce ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}

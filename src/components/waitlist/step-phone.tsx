@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { submitPhoneStep } from '@/lib/actions/submit-phone';
 import { Button } from '@/components/ui/button';
 import { CountrySelect } from '@/components/ui/country-select';
+import { formControlClassName } from '@/components/ui/form-control';
 import { PhoneIcon, ArrowRightIcon } from '@/components/ui/icons';
+import { cn } from '@/lib/utils/cn';
 
 interface StepPhoneProps {
   leadId: string;
@@ -104,7 +106,10 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
             aria-invalid={hasError}
             aria-describedby={hasError ? 'phone-error' : undefined}
             disabled={busy}
-            className="h-13 flex-1 rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className={cn(
+              formControlClassName,
+              'min-h-13 shrink-0 rounded-xl sm:min-w-0 sm:flex-1',
+            )}
           />
         </div>
 

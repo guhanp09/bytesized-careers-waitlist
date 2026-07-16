@@ -217,7 +217,7 @@ export function StepVerify({
         </div>
         <div className="flex items-center justify-between gap-3">
           {onChangeContact ? (
-            <button type="button" onClick={onChangeContact} className="text-sm text-muted hover:text-ink">
+            <button type="button" onClick={onChangeContact} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-ink">
               {changeLabel ?? 'Change'}
             </button>
           ) : <span />}
@@ -239,11 +239,11 @@ export function StepVerify({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
-            <button type="button" onClick={onSkip} className="text-sm text-faint hover:text-muted">
+            <button type="button" onClick={onSkip} className="inline-flex min-h-11 items-center text-sm text-faint hover:text-muted">
               Continue for now
             </button>
             {onChangeContact ? (
-              <button type="button" onClick={onChangeContact} className="text-sm text-muted hover:text-ink">
+              <button type="button" onClick={onChangeContact} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-ink">
                 {changeLabel ?? 'Change'}
               </button>
             ) : null}
@@ -273,7 +273,7 @@ export function StepVerify({
         id="verify-delivery-status"
         role="status"
         aria-live="polite"
-        className={delivery === 'uncertain' ? 'text-sm text-muted' : 'text-sm text-faint'}
+        className={`${delivery === 'uncertain' ? 'text-sm text-muted' : 'text-sm text-faint'} [overflow-wrap:anywhere]`}
       >
         {deliveryMessage}
       </p>
@@ -309,7 +309,7 @@ export function StepVerify({
           placeholder="••••••"
           aria-invalid={error !== null}
           aria-describedby={`verify-delivery-status${error ? ' verify-error' : ''}`}
-          className="h-14 w-full rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-center font-mono text-2xl tracking-[0.4em] text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-14 w-full rounded-xl border border-[color:var(--color-line)] bg-surface px-4 text-center font-mono text-2xl tracking-[0.4em] text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
         />
         {error ? (
           <p id="verify-error" role="alert" className="text-sm text-error">
@@ -327,12 +327,12 @@ export function StepVerify({
           type="button"
           onClick={handleResend}
           disabled={cooldown > 0 || requesting || verifying}
-          className="text-accent hover:underline disabled:text-faint disabled:no-underline"
+          className="inline-flex min-h-11 items-center text-accent hover:underline disabled:text-faint disabled:no-underline"
         >
           {cooldown > 0 ? `Resend in ${cooldown}s` : requesting ? 'Sending…' : 'Resend code'}
         </button>
         {onChangeContact ? (
-          <button type="button" onClick={onChangeContact} className="text-muted hover:text-ink">
+          <button type="button" onClick={onChangeContact} className="inline-flex min-h-11 items-center text-muted hover:text-ink">
             {changeLabel ?? 'Change'}
           </button>
         ) : null}
@@ -343,7 +343,7 @@ export function StepVerify({
           type="button"
           onClick={onSkip}
           disabled={verifying}
-          className="text-sm text-faint transition-colors hover:text-muted disabled:opacity-50"
+          className="inline-flex min-h-11 items-center text-sm text-faint transition-colors hover:text-muted disabled:opacity-50"
         >
           Continue for now
         </button>

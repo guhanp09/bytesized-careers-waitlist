@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import {
   changeEmailStep,
   submitEmailStep,
@@ -8,6 +8,8 @@ import {
 } from '@/lib/actions/submit-email';
 import { readAttribution } from '@/lib/utils/utm';
 import { Button } from '@/components/ui/button';
+import { formControlClassName } from '@/components/ui/form-control';
+import { cn } from '@/lib/utils/cn';
 import { HoneypotField } from './honeypot-field';
 
 interface StepEmailProps {
@@ -26,11 +28,15 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
   const [email, setEmail] = useState('');
   const [honeypot, setHoneypot] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<'fullName' | 'email' | 'form' | null>(null);
   const [isPending, startTransition] = useTransition();
+  const fullNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setErrorField(null);
     const attribution = readAttribution();
     startTransition(async () => {
       const result = changeSession
@@ -46,6 +52,19 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
         onComplete(result.data);
       } else {
         setError(result.error.message);
+        const field = result.error.fieldErrors?.fullName
+          ? 'fullName'
+          : result.error.fieldErrors?.email
+            ? 'email'
+            : 'form';
+        setErrorField(field);
+        if (field !== 'form') {
+          requestAnimationFrame(() =>
+            (field === 'fullName' ? fullNameRef.current : emailRef.current)?.focus({
+              preventScroll: true,
+            }),
+          );
+        }
       }
     });
   }
@@ -62,6 +81,7 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
       </label>
 
       <input
+        ref={fullNameRef}
         id="full-name"
         name="fullName"
         type="text"
@@ -72,12 +92,15 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
         value={fullName}
         onChange={(e) => {
           setFullName(e.target.value);
-          if (hasError) setError(null);
+          if (hasError) {
+            setError(null);
+            setErrorField(null);
+          }
         }}
-        aria-invalid={hasError}
+        aria-invalid={errorField === 'fullName'}
         aria-describedby={hasError ? 'email-error' : 'email-trust'}
         disabled={isPending}
-        className="h-13 w-full rounded-md border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+        className={cn(formControlClassName, 'min-h-13 rounded-md')}
       />
 
       <label htmlFor="email" className="font-mono text-[10px] font-medium tracking-[0.16em] uppercase text-muted">
@@ -86,6 +109,7 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
+          ref={emailRef}
           id="email"
           name="email"
           type="email"
@@ -96,19 +120,25 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
-            if (hasError) setError(null);
+            if (hasError) {
+              setError(null);
+              setErrorField(null);
+            }
           }}
-          aria-invalid={hasError}
+          aria-invalid={errorField === 'email'}
           aria-describedby={hasError ? 'email-error' : 'email-trust'}
           disabled={isPending}
-          className="h-13 flex-1 rounded-md border border-[color:var(--color-line)] bg-surface px-4 text-base text-ink placeholder:text-faint transition-colors focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          className={cn(
+            formControlClassName,
+            'min-h-13 shrink-0 rounded-md sm:min-w-0 sm:flex-1',
+          )}
         />
 
         <Button
           type="submit"
           size="lg"
           disabled={isPending}
-          className="shrink-0"
+          className="w-full shrink-0 sm:w-auto"
         >
           {isPending
             ? changeSession
