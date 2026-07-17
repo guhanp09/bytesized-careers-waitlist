@@ -11,7 +11,11 @@ import {
   EMPTY_PHONE_CHANNEL_CHOICES,
   type PhoneChannelChoices,
 } from '@/lib/consent/phone';
-import { normalizePhone } from '@/lib/validation/phone';
+import {
+  normalizePhoneInput,
+  phoneNormalizationErrorMessage,
+  type PhoneNormalizationResult,
+} from '@/lib/validation/phone';
 import { cn } from '@/lib/utils/cn';
 
 export interface PhoneStepValue extends PhoneChannelChoices {
@@ -63,10 +67,15 @@ function detectDefaultCountry(): string {
 /** Save an optional phone plus explicit, independently selectable channel choices. */
 export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: StepPhoneProps) {
   const reduce = useReducedMotion();
+  const initialCountryIso = initialValue.phoneCountryIso || detectDefaultCountry();
   const [countryIso, setCountryIso] = useState(
-    () => initialValue.phoneCountryIso || detectDefaultCountry(),
+    initialCountryIso,
   );
-  const [phoneNumber, setPhoneNumber] = useState(initialValue.phoneE164);
+  const [phoneNumber, setPhoneNumber] = useState(() => {
+    if (!initialValue.phoneE164) return '';
+    const normalized = normalizePhoneInput(initialValue.phoneE164, initialCountryIso);
+    return normalized.ok ? normalized.nationalNumber : initialValue.phoneE164;
+  });
   const [choices, setChoices] = useState<PhoneChannelChoices>({
     whatsappConsent: initialValue.whatsappConsent,
     smsConsent: initialValue.smsConsent,
@@ -75,11 +84,28 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const normalizedPhone = useMemo(
-    () => normalizePhone(phoneNumber.trim(), countryIso),
+  const phoneResult = useMemo(
+    () => normalizePhoneInput(phoneNumber, countryIso),
     [countryIso, phoneNumber],
   );
-  const phoneIsValid = normalizedPhone !== null;
+  const normalizedPhone = phoneResult.ok ? phoneResult : null;
+  const phoneIsValid = phoneResult.ok;
+
+  function immediateInputError(result: PhoneNormalizationResult): string | null {
+    if (result.ok) return null;
+    if (
+      result.reason === 'invalid_characters' ||
+      result.reason === 'country_mismatch' ||
+      result.reason === 'unsupported_country'
+    ) {
+      return phoneNormalizationErrorMessage(result.reason);
+    }
+    return null;
+  }
+
+  function clearChoicesWhenInvalid(result: PhoneNormalizationResult) {
+    if (!result.ok) setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
+  }
 
   function updateChoice(key: keyof PhoneChannelChoices, checked: boolean) {
     if (!phoneIsValid || busy) return;
@@ -88,9 +114,15 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
 
   async function handleFinish() {
     if (busy) return;
+    const trimmed = phoneNumber.trim();
+    if (trimmed !== '' && !phoneResult.ok) {
+      setError(phoneNormalizationErrorMessage(phoneResult.reason));
+      setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
+      return;
+    }
+
     setError(null);
     setBusy(true);
-    const trimmed = phoneNumber.trim();
     const result =
       trimmed === ''
         ? await submitPhoneStep({ leadId, resumeToken, skipped: true })
@@ -142,9 +174,9 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
             value={countryIso}
             onChange={(nextCountry) => {
               setCountryIso(nextCountry);
-              if (!normalizePhone(phoneNumber.trim(), nextCountry)) {
-                setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
-              }
+              const nextResult = normalizePhoneInput(phoneNumber, nextCountry);
+              clearChoicesWhenInvalid(nextResult);
+              setError(phoneNumber.trim() ? immediateInputError(nextResult) : null);
             }}
             disabled={busy}
           />
@@ -155,14 +187,40 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
             inputMode="tel"
             autoComplete="tel"
             placeholder="Phone number"
+            maxLength={40}
             value={phoneNumber}
             onChange={(event) => {
               const nextNumber = event.target.value;
               setPhoneNumber(nextNumber);
-              if (!normalizePhone(nextNumber.trim(), countryIso)) {
-                setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
+              const nextResult = normalizePhoneInput(nextNumber, countryIso);
+              clearChoicesWhenInvalid(nextResult);
+              setError(nextNumber.trim() ? immediateInputError(nextResult) : null);
+            }}
+            onPaste={(event) => {
+              const pasted = event.clipboardData.getData('text');
+              if (!pasted) return;
+              event.preventDefault();
+              const nextResult = normalizePhoneInput(pasted, countryIso);
+              clearChoicesWhenInvalid(nextResult);
+              if (nextResult.ok) {
+                setPhoneNumber(nextResult.nationalNumber);
+                setError(null);
+              } else {
+                setPhoneNumber(pasted.trim());
+                setError(phoneNormalizationErrorMessage(nextResult.reason));
               }
-              if (hasError) setError(null);
+            }}
+            onBlur={() => {
+              if (!phoneNumber.trim()) {
+                setError(null);
+                return;
+              }
+              if (phoneResult.ok) {
+                setPhoneNumber(phoneResult.nationalNumber);
+                setError(null);
+              } else {
+                setError(phoneNormalizationErrorMessage(phoneResult.reason));
+              }
             }}
             aria-invalid={hasError}
             aria-describedby={hasError ? 'phone-error' : 'phone-help'}

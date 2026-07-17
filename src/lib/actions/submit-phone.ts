@@ -1,6 +1,10 @@
 'use server';
 
-import { phoneStepSchema, normalizePhone } from '@/lib/validation/phone';
+import {
+  phoneNormalizationErrorMessage,
+  phoneStepSchema,
+  normalizePhoneInput,
+} from '@/lib/validation/phone';
 import { fieldErrorsOf } from '@/lib/validation/utils';
 import { updateLeadPhone } from '@/lib/db/queries/leads';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
@@ -64,15 +68,16 @@ export async function submitPhoneStep(
       return actionOk({ leadId: parsed.data.leadId });
     }
 
-    const normalized = normalizePhone(
+    const normalized = normalizePhoneInput(
       parsed.data.phoneNumber,
       parsed.data.countryIso,
     );
-    if (!normalized) {
+    if (!normalized.ok) {
+      const message = phoneNormalizationErrorMessage(normalized.reason);
       return actionError(
         'validation_error',
-        "That phone number doesn't look valid.",
-        { phoneNumber: ['Please enter a valid phone number.'] },
+        message,
+        { phoneNumber: [message] },
       );
     }
 

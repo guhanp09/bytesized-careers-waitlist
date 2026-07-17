@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { Pool } from 'pg';
 import { SUCCESS_HEADLINES } from '../../src/lib/copy/flow-copy';
 
 function uniqueEmail(tag: string): string {
@@ -87,6 +88,96 @@ test('completes the full v2 flow with mock email and validated phone capture', a
   ).toBeVisible();
 });
 
+test('normalizes country-aware phone input and blocks invalid or conflicting content', async ({ page }) => {
+  const email = uniqueEmail('phone-normalization');
+  await page.goto('/early-access');
+  await fillFirstStep(page, email, 'Phone Normalization QA');
+  await page.click('button[type="submit"]');
+  await page.getByRole('button', { name: /looking for work/ }).click();
+  await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: 'Confirm your email' }).waitFor();
+  await page.getByRole('button', { name: /continue for now/i }).click();
+  await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
+
+  const phone = page.locator('#phone');
+  const countryMismatch =
+    'This number does not match the selected country. Change the country or enter the number without its country code.';
+  const invalidCharacters =
+    'Use digits only, with optional spaces, hyphens, parentheses, or one leading +.';
+
+  await page.selectOption('#country', 'IN');
+  await phone.fill('98765 43210');
+  await phone.blur();
+  await expect(phone).toHaveValue('9876543210');
+  await expect(page.getByRole('group', { name: 'How may we reach you?' })).toBeVisible();
+
+  await phone.fill('919876543210');
+  await phone.blur();
+  await expect(phone).toHaveValue('9876543210');
+
+  await phone.evaluate((element) => {
+    const clipboard = new DataTransfer();
+    clipboard.setData('text/plain', '+91 98765-43210');
+    element.dispatchEvent(
+      new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+    );
+  });
+  await expect(phone).toHaveValue('9876543210');
+
+  await phone.fill('9876543210letters');
+  await expect(page.locator('#phone-error')).toHaveText(invalidCharacters);
+  await expect(page.getByRole('group', { name: 'How may we reach you?' })).toHaveCount(0);
+
+  await phone.fill('+1 (415) 555-2671');
+  await expect(page.locator('#phone-error')).toHaveText(countryMismatch);
+  await expect(page.getByRole('group', { name: 'How may we reach you?' })).toHaveCount(0);
+
+  await page.selectOption('#country', 'US');
+  await phone.evaluate((element) => {
+    const clipboard = new DataTransfer();
+    clipboard.setData('text/plain', '+1 (415) 555-2671');
+    element.dispatchEvent(
+      new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+    );
+  });
+  await expect(phone).toHaveValue('4155552671');
+  await expect(page.locator('#phone-error')).toHaveCount(0);
+
+  await phone.fill('14155552671');
+  await phone.blur();
+  await expect(phone).toHaveValue('4155552671');
+  await page.getByRole('checkbox', { name: 'SMS' }).check();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
+  await page.getByRole('button', { name: 'Finish' }).click();
+  await expect(page.getByRole('heading', { name: SUCCESS_HEADLINES.seeker })).toBeVisible();
+
+  const pool = new Pool({
+    connectionString:
+      process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5433/bytesized_test',
+  });
+  try {
+    const result = await pool.query<{
+      phone_e164: string;
+      phone_country_iso: string;
+      phone_sms_consent: boolean;
+    }>(
+      'select phone_e164, phone_country_iso, phone_sms_consent from waitlist_leads where normalized_email = $1',
+      [email],
+    );
+    expect(result.rows[0]).toEqual({
+      phone_e164: '+14155552671',
+      phone_country_iso: 'US',
+      phone_sms_consent: true,
+    });
+  } finally {
+    await pool.end();
+  }
+});
+
 test('invalid email shows an error and does not advance', async ({ page }) => {
   await page.goto('/early-access');
   await fillFirstStep(page, 'not-an-email');
@@ -161,7 +252,8 @@ test('resume restores the saved phone and independent channel choices for editin
   await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
   await page.getByRole('button', { name: /Back/ }).click();
   await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
-  await expect(page.locator('#phone')).toHaveValue('+919900000001');
+  await expect(page.locator('#country')).toHaveValue('IN');
+  await expect(page.locator('#phone')).toHaveValue('9900000001');
   await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'SMS' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Phone calls' })).not.toBeChecked();
