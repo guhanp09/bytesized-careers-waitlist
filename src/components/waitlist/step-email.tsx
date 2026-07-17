@@ -116,6 +116,9 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
           type="email"
           inputMode="email"
           autoComplete="email"
+          autoCorrect="off"
+          autoCapitalize="none"
+          spellCheck={false}
           required
           placeholder="you@email.com"
           value={email}

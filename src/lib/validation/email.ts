@@ -33,9 +33,15 @@ const fullName = z
 
 export const emailStepSchema = z.object({
   fullName,
+  // Trim first, then check format: guarantees leading/trailing whitespace (including a
+  // non-breaking space picked up from autofill, paste, or OS text substitution) never
+  // fails an otherwise-valid address. `.pipe()` makes the ordering explicit rather than
+  // relying on chained-check ordering on a single schema instance.
   email: z
-    .email({ message: 'Please enter a valid email address.' })
-    .max(320, { message: 'That email address is too long.' }),
+    .string()
+    .transform((value) => value.trim())
+    .pipe(z.string().max(320, { message: 'That email address is too long.' }))
+    .pipe(z.email({ message: 'Please enter a valid email address.' })),
   // Honeypot: any non-empty value indicates a bot (checked in the action).
   honeypot: z.string().optional().default(''),
   attribution: attributionSubmissionSchema.optional(),
