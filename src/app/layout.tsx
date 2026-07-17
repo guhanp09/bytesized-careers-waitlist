@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://bytesizedcareers.com'),
   title: 'ByteSized Careers — Your brief for creator-economy work & talent',
   description:
-    'Creator-economy hiring happens in scattered posts, DMs and referrals. ByteSized Careers turns your intent into a structured brief and matches it. Join the founding cohort.',
+    'Join the ByteSized Careers founding cohort and record what you do or who you may need before the creator-economy marketplace launches.',
   robots: { index: true, follow: true },
   icons: {
     icon: [{ url: '/brand/bytesized-careers-mark.svg', type: 'image/svg+xml' }],
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'ByteSized Careers — Early access',
     description:
-      'Tell us what you do or who you need. We turn it into a brief worth matching.',
+      'Record what you do or who you may need before the creator-economy marketplace launches.',
     type: 'website',
     images: [
       {
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'ByteSized Careers — Early access',
-    description: 'Tell us what you do or who you need. We turn it into a brief worth matching.',
+    description: 'Record what you do or who you may need before the creator-economy marketplace launches.',
     images: ['/brand/bytesized-careers-og.png'],
   },
 };

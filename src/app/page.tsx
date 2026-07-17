@@ -67,6 +67,10 @@ export default function Home() {
                     <Link href="/terms" className="text-accent hover:underline">
                       Terms
                     </Link>
+                    {' · '}
+                    <Link href="/cookies" className="text-accent hover:underline">
+                      Storage
+                    </Link>
                   </p>
                 </section>
               </Reveal>
@@ -85,12 +89,15 @@ export default function Home() {
             <span className="font-mono text-[11px] tracking-wide">
               © {new Date().getFullYear()} ByteSized Careers — set in Fraunces & Plex
             </span>
-            <nav className="flex gap-6">
+            <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
               <Link href="/privacy" className="hover:text-muted">
                 Privacy
               </Link>
               <Link href="/terms" className="hover:text-muted">
                 Terms
+              </Link>
+              <Link href="/cookies" className="hover:text-muted">
+                Storage
               </Link>
             </nav>
           </div>

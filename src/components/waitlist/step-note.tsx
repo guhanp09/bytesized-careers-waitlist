@@ -97,12 +97,15 @@ export function StepNote({ leadId, resumeToken, role, value, onChange, onComplet
           }}
           onBlur={() => void save()}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'note-error' : undefined}
+          aria-describedby={error ? 'note-guidance note-error' : 'note-guidance'}
           className="w-full resize-y rounded-xl border border-[color:var(--color-line)] bg-surface px-4 py-3 text-base leading-relaxed text-ink placeholder:text-faint focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
-        <p className="text-right text-xs text-faint tabular-nums">
-          {value.length}/{MAX}
-        </p>
+        <div className="flex items-start justify-between gap-3 text-xs text-faint">
+          <p id="note-guidance">
+            Please don&apos;t include health, financial, government-ID, password, or other sensitive information.
+          </p>
+          <p className="shrink-0 tabular-nums">{value.length}/{MAX}</p>
+        </div>
         {error ? (
           <p id="note-error" role="alert" className="text-sm text-error">
             {error}

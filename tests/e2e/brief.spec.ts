@@ -68,7 +68,7 @@ test('the brief stays in the viewport through later steps — including the phon
   await page.getByRole('button', { name: /continue for now/i }).click();
   await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('heading', { name: /Get first dibs on WhatsApp/ }).waitFor();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
 
   // The companion folio is still on screen next to the active question…
   const panel = page.locator('[data-brief-rail] [data-brief-panel]');
@@ -103,7 +103,7 @@ test('completing the flow files the brief with the stamp', async ({ page }) => {
   await page.fill('#verify-code', await readDevCode(page));
   await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('heading', { name: /Get first dibs on WhatsApp/ }).waitFor();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
   await page.getByRole('button', { name: 'Finish' }).click();

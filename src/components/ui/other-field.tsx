@@ -51,9 +51,13 @@ export function OtherField({
               autoComplete="off"
               onChange={(e) => onChange(e.target.value)}
               onBlur={onCommit}
+              aria-describedby={`${id}-guidance`}
               placeholder="Type your answer…"
               className={cn(formControlClassName, 'rounded-xl')}
             />
+            <p id={`${id}-guidance`} className="mt-1.5 text-xs leading-5 text-faint">
+              Keep this work-related; don&apos;t include sensitive personal information.
+            </p>
           </div>
         </motion.div>
       ) : null}

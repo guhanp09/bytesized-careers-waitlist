@@ -107,4 +107,4 @@ export const INTERLUDE = {
 
 /** Trust colophon (replaces the trust strip copy; Privacy/Terms links stay). */
 export const COLOPHON =
-  'We collect only what makes your brief matchable — nothing more. Your data is never sold, messages are always opt-in, and we’ll strike your record whenever you ask.';
+  'We do not sell your brief or publish it to other users. A small set of service providers processes it to run early access, and you can ask us to correct or delete it.';

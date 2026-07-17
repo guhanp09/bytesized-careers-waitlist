@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   changeEmailStep,
   submitEmailStep,
@@ -33,6 +34,13 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
   const fullNameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (isPending || !errorField || errorField === 'form') return;
+    (errorField === 'fullName' ? fullNameRef.current : emailRef.current)?.focus({
+      preventScroll: true,
+    });
+  }, [errorField, isPending]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -58,13 +66,6 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
             ? 'email'
             : 'form';
         setErrorField(field);
-        if (field !== 'form') {
-          requestAnimationFrame(() =>
-            (field === 'fullName' ? fullNameRef.current : emailRef.current)?.focus({
-              preventScroll: true,
-            }),
-          );
-        }
       }
     });
   }
@@ -157,9 +158,17 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
           {error}
         </p>
       ) : (
-        <p id="email-trust" className="text-sm text-faint">
-          No spam. Unsubscribe anytime. We&apos;ll only reach out when it&apos;s
-          relevant to you.
+        <p id="email-trust" className="text-xs leading-5 text-faint sm:text-sm">
+          We use your email for verification and early-access, launch and invitation updates.
+          By selecting Get early access, you confirm you are 18 or older, agree to the{' '}
+          <Link href="/terms" className="text-muted underline underline-offset-4 hover:text-ink">
+            Early-Access Terms
+          </Link>{' '}
+          and acknowledge the{' '}
+          <Link href="/privacy" className="text-muted underline underline-offset-4 hover:text-ink">
+            Privacy Notice
+          </Link>
+          . Optional launch, invitation and relevance emails can be stopped separately from deleting your registration.
         </p>
       )}
     </form>
