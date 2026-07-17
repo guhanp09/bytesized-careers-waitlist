@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/check-production-email-config.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -11,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "smoke:production-email-config": "tsx scripts/check-production-email-config.ts --production",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed-admin-examples": "node --env-file=.env.local --import tsx scripts/seed-admin-examples.ts",

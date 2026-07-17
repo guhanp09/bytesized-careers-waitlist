@@ -91,3 +91,36 @@ The migration adding request/provider/failure metadata must be applied to the st
 `bytesized-careers-waitlist` Neon project before deploying code that enables delivery. Do
 not run that migration or modify production flags until local approval and explicit
 production authorization. Existing unverified leads remain valid waitlist members.
+
+### Deployment checklist
+
+Complete this checklist before every Production deployment. All variables must be scoped to
+the standalone `aforalgo/bytesized-careers-waitlist` Vercel project’s Production environment:
+
+- `EMAIL_VERIFICATION_ENABLED` is enabled (`true` or `1`).
+- `EMAIL_DELIVERY_ENABLED` is enabled (`true` or `1`).
+- `LOCAL_VERIFICATION_ENABLED` is disabled (normally `false`).
+- `RESEND_API_KEY` is present and non-blank.
+- `EMAIL_FROM_ADDRESS` is present and non-blank.
+- Resend still shows the sending domain as verified.
+- The required database migration has been applied to the separate ByteSized Careers Neon
+  project; no CreatorJobs resource is in scope.
+
+The Vercel Production build runs the sanitized gate automatically before `next build`. Confirm
+that this step passes in the deployment logs. Sensitive Production variables are available to
+the build even though their values cannot be retrieved for a local CLI check.
+
+For CI or a build shell that already has the target variables injected, run the strict command:
+
+```bash
+npm run smoke:production-email-config
+```
+
+The command reports only enabled/disabled or present/missing statuses and exits nonzero for
+an unsafe Production configuration. It never prints environment values, credentials, tokens,
+or provider responses. Do not download Sensitive Production values into a local environment
+file just to run this check.
+
+After deployment, complete one controlled verification: submit a fresh address, confirm the
+branded message arrives, enter its code, and confirm the lead becomes verified. Provider
+failure must continue to show the honest verification-unavailable fallback; do not bypass it.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isEnabledFlag } from '@/lib/email/config-diagnostic';
 
 /**
  * Environment access (plan §17, §19).
@@ -40,27 +41,23 @@ const rawEnvSchema = z.object({
 
 const parsed = rawEnvSchema.parse(process.env);
 
-function asFlag(value: string | undefined): boolean {
-  return value === 'true' || value === '1';
-}
-
 export const env = {
   ...parsed,
-  emailDeliveryEnabled: asFlag(parsed.EMAIL_DELIVERY_ENABLED),
-  emailVerificationEnabled: asFlag(parsed.EMAIL_VERIFICATION_ENABLED),
+  emailDeliveryEnabled: isEnabledFlag(parsed.EMAIL_DELIVERY_ENABLED),
+  emailVerificationEnabled: isEnabledFlag(parsed.EMAIL_VERIFICATION_ENABLED),
   resendConfigured: Boolean(
     parsed.RESEND_API_KEY?.trim() && parsed.EMAIL_FROM_ADDRESS?.trim(),
   ),
   // Mock verification is available ONLY when explicitly enabled AND not production.
   localVerificationEnabled:
-    asFlag(parsed.LOCAL_VERIFICATION_ENABLED) && parsed.NODE_ENV !== 'production',
+    isEnabledFlag(parsed.LOCAL_VERIFICATION_ENABLED) && parsed.NODE_ENV !== 'production',
   adminAllowedGithubLogins: (parsed.ADMIN_ALLOWED_GITHUB_LOGINS ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean),
   // Screenshot/review convenience. Host validation is applied separately at request time.
   localAdminPreviewEnabled:
-    asFlag(parsed.ADMIN_LOCAL_PREVIEW_ENABLED) && parsed.NODE_ENV === 'development',
+    isEnabledFlag(parsed.ADMIN_LOCAL_PREVIEW_ENABLED) && parsed.NODE_ENV === 'development',
   isProduction: parsed.NODE_ENV === 'production',
   isTest: parsed.NODE_ENV === 'test',
 } as const;
