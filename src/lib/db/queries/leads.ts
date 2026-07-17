@@ -12,6 +12,11 @@ import {
 import { LEAD_DATA_VERSION, type NeedProfileV1 } from '@/types/lead-domain';
 import type { Role } from '@/types/waitlist';
 import { normalizeFullName } from '@/lib/validation/email';
+import {
+  PHONE_CONSENT_SOURCE,
+  PHONE_CONSENT_VERSION,
+  type PhoneChannelChoices,
+} from '@/lib/consent/phone';
 
 /**
  * Idempotent upsert for Step 1 (plan §9). Keyed on the UNIQUE normalized_email, so
@@ -290,8 +295,9 @@ export async function updateLeadNote(input: {
 }
 
 /**
- * Step 6 — save or skip optional phone capture. Completion belongs to the final note step;
- * the removed promotional-consent columns are retained but never updated here.
+ * Step 6 — save or remove the optional phone and atomically record the three current
+ * channel choices. The stable version/source and server timestamp make each update
+ * auditable without treating historical legacy fields as current consent.
  */
 export async function updateLeadPhone(
   input:
@@ -302,16 +308,30 @@ export async function updateLeadPhone(
         skipped: false;
         phoneE164: string;
         phoneCountryIso: string;
-      },
+      } & PhoneChannelChoices,
 ): Promise<{ ok: boolean }> {
   const set: LeadSet = {
     lastCompletedStep: sql`greatest(${waitlistLeads.lastCompletedStep}, 6)`,
     lastMeaningfulStep: 'phone',
     leadDataVersion: LEAD_DATA_VERSION,
     completionStatus: sql`case when ${waitlistLeads.completionStatus} = 'email_only' then 'partial'::completion_status else ${waitlistLeads.completionStatus} end`,
+    phoneWhatsappConsent: input.skipped ? false : input.whatsappConsent,
+    phoneSmsConsent: input.skipped ? false : input.smsConsent,
+    phoneVoiceConsent: input.skipped ? false : input.voiceConsent,
+    phoneConsentVersion: PHONE_CONSENT_VERSION,
+    phoneConsentRecordedAt: sql`now()`,
+    phoneConsentSource: PHONE_CONSENT_SOURCE,
   };
 
-  if (!input.skipped) {
+  if (input.skipped) {
+    set.phoneE164 = null;
+    set.phoneCountryIso = null;
+    set.phoneVerificationStatus = 'unverified';
+    set.phoneVerifiedAt = null;
+    set.phoneVerificationTokenHash = null;
+    set.phoneVerificationExpiresAt = null;
+    set.phoneVerificationAttempts = 0;
+  } else {
     set.phoneE164 = input.phoneE164;
     set.phoneCountryIso = input.phoneCountryIso;
     set.phoneVerificationStatus = 'unverified';
@@ -331,6 +351,11 @@ export interface ResumeState {
   role: Role | null;
   lastCompletedStep: number;
   hasPhone: boolean;
+  phoneE164: string;
+  phoneCountryIso: string;
+  whatsappConsent: boolean;
+  smsConsent: boolean;
+  voiceConsent: boolean;
   jobCategories: string[];
   workFormats: string[];
   talentCategories: string[];
@@ -354,9 +379,9 @@ export interface ResumeState {
 }
 
 /**
- * Fetch just enough to resume a session (plan §12), scoped by the resume-token hash +
- * expiry. Returns a MASKED email only — never the raw email or phone number. Used by the
- * public resume action, so PII must not leak here.
+ * Fetch the saved form state for a token-authorized resume session. The raw email remains
+ * masked; the phone is returned because this editing session must be able to display,
+ * change, or remove it and its channel choices accurately.
  */
 export async function selectResumeState(input: {
   leadId: string;
@@ -371,6 +396,10 @@ export async function selectResumeState(input: {
       role: waitlistLeads.role,
       lastCompletedStep: waitlistLeads.lastCompletedStep,
       phoneE164: waitlistLeads.phoneE164,
+      phoneCountryIso: waitlistLeads.phoneCountryIso,
+      phoneWhatsappConsent: waitlistLeads.phoneWhatsappConsent,
+      phoneSmsConsent: waitlistLeads.phoneSmsConsent,
+      phoneVoiceConsent: waitlistLeads.phoneVoiceConsent,
       jobCategories: waitlistLeads.jobCategories,
       workFormats: waitlistLeads.workFormats,
       talentCategories: waitlistLeads.talentCategories,
@@ -431,6 +460,11 @@ export async function selectResumeState(input: {
     role: row.role,
     lastCompletedStep: row.lastCompletedStep,
     hasPhone: row.phoneE164 !== null && row.phoneE164 !== '',
+    phoneE164: row.phoneE164 ?? '',
+    phoneCountryIso: row.phoneCountryIso ?? '',
+    whatsappConsent: row.phoneWhatsappConsent,
+    smsConsent: row.phoneSmsConsent,
+    voiceConsent: row.phoneVoiceConsent,
     jobCategories: seeker.selections,
     workFormats: row.workFormats,
     talentCategories: recruiter.selections,

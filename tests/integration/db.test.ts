@@ -136,6 +136,10 @@ describe('upsertLeadByEmail — idempotency', () => {
     expect(lead.emailVerificationStatus).toBe('unverified');
     expect(lead.completionStatus).toBe('email_only');
     expect(lead.lastCompletedStep).toBe(1);
+    expect(lead.phoneWhatsappConsent).toBe(false);
+    expect(lead.phoneSmsConsent).toBe(false);
+    expect(lead.phoneVoiceConsent).toBe(false);
+    expect(lead.phoneConsentRecordedAt).toBeNull();
   });
 
   it('normalizes names and never lets a blank repeat erase one', async () => {
@@ -250,7 +254,10 @@ describe('current funnel completion', () => {
     expect(lead.completedAt).toBeNull();
     expect(lead.lastCompletedStep).toBe(6);
     expect(lead.phoneE164).toBeNull();
-    expect(lead.whatsappConsent).toBe(false);
+    expect(lead.phoneWhatsappConsent).toBe(false);
+    expect(lead.phoneSmsConsent).toBe(false);
+    expect(lead.phoneVoiceConsent).toBe(false);
+    expect(lead.phoneConsentSource).toBe('waitlist_phone_step');
     await updateLeadNote({ leadId: id, resumeToken: token, additionalNotes: null });
     lead = await getLead(id);
     expect(lead.completionStatus).toBe('completed');
@@ -258,7 +265,7 @@ describe('current funnel completion', () => {
     expect(lead.lastMeaningfulStep).toBe('completed');
   });
 
-  it('stores phone without writing obsolete WhatsApp consent', async () => {
+  it('stores independent channel choices without writing obsolete WhatsApp consent', async () => {
     const { id, token } = await createLead('phone@example.com');
     await updateLeadPhone({
       leadId: id,
@@ -266,17 +273,57 @@ describe('current funnel completion', () => {
       skipped: false,
       phoneE164: '+447400123456',
       phoneCountryIso: 'GB',
+      whatsappConsent: true,
+      smsConsent: false,
+      voiceConsent: true,
     });
     const lead = await getLead(id);
     expect(lead.phoneE164).toBe('+447400123456');
+    expect(lead.phoneWhatsappConsent).toBe(true);
+    expect(lead.phoneSmsConsent).toBe(false);
+    expect(lead.phoneVoiceConsent).toBe(true);
+    expect(lead.phoneConsentVersion).toBe('2026-07-17.v1');
+    expect(lead.phoneConsentRecordedAt).not.toBeNull();
+    expect(lead.phoneConsentSource).toBe('waitlist_phone_step');
     expect(lead.whatsappConsent).toBe(false);
     expect(lead.whatsappConsentAt).toBeNull();
     expect(lead.whatsappConsentCopyVersion).toBeNull();
+
+    for (const choices of [
+      { whatsappConsent: true, smsConsent: false, voiceConsent: false },
+      { whatsappConsent: false, smsConsent: true, voiceConsent: false },
+      { whatsappConsent: false, smsConsent: false, voiceConsent: true },
+      { whatsappConsent: true, smsConsent: true, voiceConsent: true },
+      { whatsappConsent: false, smsConsent: false, voiceConsent: false },
+    ]) {
+      await updateLeadPhone({
+        leadId: id,
+        resumeToken: token,
+        skipped: false,
+        phoneE164: '+447400123456',
+        phoneCountryIso: 'GB',
+        ...choices,
+      });
+      const updated = await getLead(id);
+      expect(updated.id).toBe(id);
+      expect(updated.phoneWhatsappConsent).toBe(choices.whatsappConsent);
+      expect(updated.phoneSmsConsent).toBe(choices.smsConsent);
+      expect(updated.phoneVoiceConsent).toBe(choices.voiceConsent);
+      expect(updated.phoneConsentVersion).toBe('2026-07-17.v1');
+      expect(updated.phoneConsentSource).toBe('waitlist_phone_step');
+    }
+
+    await updateLeadPhone({ leadId: id, resumeToken: token, skipped: true });
+    const cleared = await getLead(id);
+    expect(cleared.phoneE164).toBeNull();
+    expect(cleared.phoneWhatsappConsent).toBe(false);
+    expect(cleared.phoneSmsConsent).toBe(false);
+    expect(cleared.phoneVoiceConsent).toBe(false);
   });
 });
 
 describe('selectResumeState', () => {
-  it('returns masked email + selections for a valid token, never raw PII', async () => {
+  it('returns masked email and accurately restores token-authorized phone choices', async () => {
     const { id, token } = await createLead('resume@example.com', {}, 'Rina Das');
     await updateLeadRole({ leadId: id, resumeToken: token, role: 'seeker' });
     await updateLeadPreferences({
@@ -284,13 +331,28 @@ describe('selectResumeState', () => {
       resumeToken: token,
       jobCategories: ['content_strategy'],
     });
+    await updateLeadPhone({
+      leadId: id,
+      resumeToken: token,
+      skipped: false,
+      phoneE164: '+919900000001',
+      phoneCountryIso: 'IN',
+      whatsappConsent: false,
+      smsConsent: true,
+      voiceConsent: false,
+    });
     const state = await selectResumeState({ leadId: id, resumeToken: token });
     expect(state).not.toBeNull();
     expect(state?.emailMasked).not.toContain(emailFor('resume@example.com'));
     expect(state?.fullName).toBe('Rina Das');
     expect(state?.role).toBe('seeker');
     expect(state?.jobCategories).toEqual(['content_strategy']);
-    expect(state?.lastCompletedStep).toBe(3);
+    expect(state?.lastCompletedStep).toBe(6);
+    expect(state?.phoneE164).toBe('+919900000001');
+    expect(state?.phoneCountryIso).toBe('IN');
+    expect(state?.whatsappConsent).toBe(false);
+    expect(state?.smsConsent).toBe(true);
+    expect(state?.voiceConsent).toBe(false);
   });
 
   it('returns null for an invalid token', async () => {
@@ -316,6 +378,9 @@ describe('admin queries', () => {
       skipped: false,
       phoneE164: '+447400123456',
       phoneCountryIso: 'GB',
+      whatsappConsent: false,
+      smsConsent: false,
+      voiceConsent: false,
     });
     await updateLeadNote({
       leadId: a.id,
@@ -596,6 +661,7 @@ describe('verification (local mock, save-first)', () => {
     await updateLeadPhone({
       leadId: id, resumeToken: token, skipped: false,
       phoneE164: '+447400123456', phoneCountryIso: 'GB',
+      whatsappConsent: false, smsConsent: false, voiceConsent: false,
     });
     const code = generateCode();
     await storePhoneCode(

@@ -52,9 +52,9 @@ test('completes the full v2 flow with mock email and validated phone capture', a
   await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
-  // Phone — the WhatsApp promotional checkbox must be gone.
-  await page.getByRole('heading', { name: /Get first dibs on WhatsApp/ }).waitFor();
-  await expect(page.locator('#whatsapp-consent')).toHaveCount(0);
+  // Phone — channel choices stay hidden until the number is valid and start unchecked.
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).toHaveCount(0);
   await page.selectOption('#country', 'GB');
   // A malformed number is rejected with a clear validation error…
   await page.fill('#phone', '123');
@@ -62,6 +62,16 @@ test('completes the full v2 flow with mock email and validated phone capture', a
   await expect(page.locator('#phone-error')).toBeVisible();
   // …then a plausible one is normalized and saved — validate + save, never verify.
   await page.fill('#phone', '7400123456');
+  await expect(page.getByRole('group', { name: 'How may we reach you?' })).toBeVisible();
+  const whatsapp = page.getByRole('checkbox', { name: 'WhatsApp' });
+  const sms = page.getByRole('checkbox', { name: 'SMS' });
+  const calls = page.getByRole('checkbox', { name: 'Phone calls' });
+  await expect(whatsapp).not.toBeChecked();
+  await expect(sms).not.toBeChecked();
+  await expect(calls).not.toBeChecked();
+  await whatsapp.check();
+  await calls.check();
+  await expect(sms).not.toBeChecked();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   // No OTP challenge exists: the flow moves straight to the final note.
@@ -110,6 +120,38 @@ test('resumes after reload with a masked email', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('heading', { name: /What kind of work/ })).toBeVisible();
+});
+
+test('resume restores the saved phone and independent channel choices for editing', async ({ page }) => {
+  await page.goto('/');
+  await fillFirstStep(page, uniqueEmail('phone-resume'), 'Rina Das');
+  await page.click('button[type="submit"]');
+  await page.getByRole('button', { name: /looking for work/ }).click();
+  await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: 'Confirm your email' }).waitFor();
+  await page.getByRole('button', { name: /continue for now/i }).click();
+  await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.selectOption('#country', 'IN');
+  await page.fill('#phone', '9900000001');
+  await page.getByRole('checkbox', { name: 'SMS' }).check();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
+
+  await page.goto('/');
+  await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
+  await page.getByRole('button', { name: /Back/ }).click();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
+  await expect(page.locator('#phone')).toHaveValue('+919900000001');
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'SMS' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Phone calls' })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'WhatsApp' }).check();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /genuinely useful/ })).toBeVisible();
 });
 
 test('ambient background is decorative and never blocks the form', async ({ page }) => {

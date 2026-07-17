@@ -66,12 +66,17 @@ test('capture the mobile release-review evidence set', async ({ page, context })
 
   await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('heading', { name: /Get first dibs on WhatsApp/ }).waitFor();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
   await shot(page, 'phone-390x844');
   await page.fill('#phone', '123');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.locator('#phone-error')).toBeVisible();
+  await page.selectOption('#country', 'IN');
+  await page.fill('#phone', '9900000001');
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).toBeVisible();
+  await shot(page, 'phone-consent-390x844');
   await page.fill('#phone', '');
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();

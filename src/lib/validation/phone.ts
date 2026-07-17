@@ -2,11 +2,8 @@ import { z } from 'zod';
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
 
 /**
- * Current optional phone-step validation.
- *
- * A discriminated union on `skipped` — the phone step is genuinely optional. When provided,
- * the number is parsed against the selected country and normalized to E.164. The removed
- * promotional-consent field is intentionally not accepted by the current action.
+ * A discriminated union keeps the phone genuinely optional. Channel choices are accepted
+ * only alongside a supplied number; skipped submissions are always stored as all-false.
  */
 export const phoneStepSchema = z.discriminatedUnion('skipped', [
   z.object({
@@ -20,6 +17,9 @@ export const phoneStepSchema = z.discriminatedUnion('skipped', [
     skipped: z.literal(false),
     countryIso: z.string().length(2),
     phoneNumber: z.string().min(3).max(30),
+    whatsappConsent: z.boolean(),
+    smsConsent: z.boolean(),
+    voiceConsent: z.boolean(),
   }),
 ]);
 

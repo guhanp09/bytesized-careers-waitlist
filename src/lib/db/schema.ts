@@ -133,9 +133,19 @@ export const waitlistLeads = pgTable(
     // ── Final open-text ("anything else") — role-aware free response ────
     additionalNotes: text('additional_notes'),
 
-    // ── Phone + WhatsApp promotional consent (concept 4) ────────────────
+    // ── Optional phone + independently chosen communication channels ───
     phoneE164: text('phone_e164'),
     phoneCountryIso: text('phone_country_iso'),
+    phoneWhatsappConsent: boolean('phone_whatsapp_consent').notNull().default(false),
+    phoneSmsConsent: boolean('phone_sms_consent').notNull().default(false),
+    phoneVoiceConsent: boolean('phone_voice_consent').notNull().default(false),
+    phoneConsentVersion: text('phone_consent_version'),
+    phoneConsentRecordedAt: timestamp('phone_consent_recorded_at', {
+      withTimezone: true,
+    }),
+    phoneConsentSource: text('phone_consent_source'),
+    // Historical fields retained for schema compatibility. They are never treated as
+    // evidence for the current, channel-specific choices above.
     whatsappConsent: boolean('whatsapp_consent').notNull().default(false),
     whatsappConsentAt: timestamp('whatsapp_consent_at', { withTimezone: true }),
     whatsappConsentCopyVersion: text('whatsapp_consent_copy_version'),

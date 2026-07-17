@@ -1,7 +1,8 @@
 # ByteSized Careers pre-launch legal readiness
 
-Review date: 17 July 2026  
-Status: local public-review draft; not deployed  
+Review date: 17 July 2026
+
+Status: local public-review draft; not deployed
 Scope: early-access registration website only
 
 This review aligns the public legal pages with the inspected product and the operator's confirmed decisions. It does not guarantee compliance, certify the service, or replace advice from qualified counsel.

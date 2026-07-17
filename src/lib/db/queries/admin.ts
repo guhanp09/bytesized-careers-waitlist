@@ -293,6 +293,12 @@ export interface AdminLeadRow {
   lastTransactionalEmailAt: Date | null;
   phoneE164: string | null;
   phoneCountryIso: string | null;
+  phoneWhatsappConsent: boolean;
+  phoneSmsConsent: boolean;
+  phoneVoiceConsent: boolean;
+  phoneConsentVersion: string | null;
+  phoneConsentRecordedAt: Date | null;
+  phoneConsentSource: string | null;
   phoneVerificationStatus: string;
   phoneVerificationRequestedAt: Date | null;
   phoneVerificationLastSentAt: Date | null;
@@ -342,6 +348,12 @@ const LEAD_COLUMNS = {
   lastTransactionalEmailAt: waitlistLeads.lastTransactionalEmailAt,
   phoneE164: waitlistLeads.phoneE164,
   phoneCountryIso: waitlistLeads.phoneCountryIso,
+  phoneWhatsappConsent: waitlistLeads.phoneWhatsappConsent,
+  phoneSmsConsent: waitlistLeads.phoneSmsConsent,
+  phoneVoiceConsent: waitlistLeads.phoneVoiceConsent,
+  phoneConsentVersion: waitlistLeads.phoneConsentVersion,
+  phoneConsentRecordedAt: waitlistLeads.phoneConsentRecordedAt,
+  phoneConsentSource: waitlistLeads.phoneConsentSource,
   phoneVerificationStatus: waitlistLeads.phoneVerificationStatus,
   phoneVerificationRequestedAt: waitlistLeads.phoneVerificationRequestedAt,
   phoneVerificationLastSentAt: waitlistLeads.phoneVerificationLastSentAt,

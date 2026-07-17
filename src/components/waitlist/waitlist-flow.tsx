@@ -6,7 +6,7 @@ import { StepEmail } from './step-email';
 import { StepRole } from './step-role';
 import { StepPreferences, type PreferencesData } from './step-preferences';
 import { StepContext, type ContextData } from './step-context';
-import { StepPhone } from './step-phone';
+import { StepPhone, type PhoneStepValue } from './step-phone';
 import { StepVerify } from './step-verify';
 import { StepNote } from './step-note';
 import { StepSuccess } from './step-success';
@@ -35,7 +35,8 @@ const TOTAL_STEPS = 9;
 
 interface FlowData
   extends PreferencesData,
-    ContextData {
+    ContextData,
+    PhoneStepValue {
   leadId: string | null;
   resumeToken: string | null;
   fullName: string;
@@ -68,6 +69,11 @@ const initialData: FlowData = {
   companyUrl: '',
   additionalNotes: '',
   phoneProvided: false,
+  phoneE164: '',
+  phoneCountryIso: '',
+  whatsappConsent: false,
+  smsConsent: false,
+  voiceConsent: false,
   emailMasked: null,
 };
 
@@ -186,6 +192,11 @@ export function WaitlistFlow() {
           companyUrl: s.companyUrl,
           additionalNotes: s.additionalNotes,
           phoneProvided: s.hasPhone,
+          phoneE164: s.phoneE164,
+          phoneCountryIso: s.phoneCountryIso,
+          whatsappConsent: s.whatsappConsent,
+          smsConsent: s.smsConsent,
+          voiceConsent: s.voiceConsent,
           emailMasked: s.emailMasked,
         }));
         setResumeEmailMasked(s.emailMasked);
@@ -307,8 +318,9 @@ export function WaitlistFlow() {
       return (
         <StepPhone
           {...ctx}
-          onComplete={(phoneProvided) => {
-            merge({ phoneProvided });
+          initialValue={data}
+          onComplete={(phone) => {
+            merge(phone);
             // Numbers are validated and saved, never verified — continue to the note.
             navigate(8);
           }}

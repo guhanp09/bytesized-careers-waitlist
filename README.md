@@ -59,7 +59,7 @@ See [`.env.example`](.env.example) for the full annotated list. Required for the
 | `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Admin login via GitHub OAuth. |
 | `ADMIN_ALLOWED_GITHUB_LOGINS` | Comma-separated GitHub usernames allowed into `/admin`. |
 | `ADMIN_LOCAL_PREVIEW_ENABLED` | Optional localhost-only development preview; disabled by default and hard-disabled outside development. |
-| `EMAIL_DELIVERY_ENABLED`, `EMAIL_VERIFICATION_ENABLED` | Keep `false` until the Resend domain and credentials are configured. |
+| `EMAIL_DELIVERY_ENABLED`, `EMAIL_VERIFICATION_ENABLED` | Real verification gates. Both are required to be `true` in Production after Resend is configured. |
 | `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO` | Real email delivery configuration; only read when delivery is enabled. |
 | `LOCAL_VERIFICATION_ENABLED` | Development/test mock codes only; production hard-disables it. |
 
@@ -77,6 +77,7 @@ Email-provider variables are optional while delivery is disabled. See [`docs/ema
 | `npm run lint` | ESLint. |
 | `npm test` | Unit + integration tests (Vitest). |
 | `npm run test:e2e` | End-to-end tests (Playwright). |
+| `npm run smoke:production-email-config` | Fail unless the current environment has release-safe, sanitized Production email configuration. |
 | `npm run db:generate` | Generate a new SQL migration from `src/lib/db/schema.ts`. |
 | `npm run db:migrate` | Apply migrations. |
 | `npm run db:seed-admin-examples` | Upsert clearly marked dashboard demo leads into local PostgreSQL only. |
@@ -89,7 +90,7 @@ Email-provider variables are optional while delivery is disabled. See [`docs/ema
 2. Inspect the row:
    ```bash
    docker exec bytesized-pg psql -U postgres -d bytesized \
-     -c "select normalized_email, role, completion_status, whatsapp_consent from waitlist_leads order by created_at desc limit 5;"
+     -c "select normalized_email, role, completion_status, phone_whatsapp_consent, phone_sms_consent, phone_voice_consent from waitlist_leads order by created_at desc limit 5;"
    ```
 
 ---
@@ -113,8 +114,15 @@ Email-provider variables are optional while delivery is disabled. See [`docs/ema
    - Create a GitHub OAuth app (`https://github.com/settings/developers`) with callback `https://<your-domain>/api/auth/callback/github`, and set `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`.
    - Set `AUTH_SECRET` (`openssl rand -base64 32`).
    - Set `ADMIN_ALLOWED_GITHUB_LOGINS` to your GitHub username.
-   - Keep `EMAIL_DELIVERY_ENABLED=false` and `EMAIL_VERIFICATION_ENABLED=false` for now.
+   - Configure the Production email settings in the checklist in [`docs/email-integration.md`](docs/email-integration.md). Production requires both email flags enabled, Resend credentials present, and local verification disabled.
+   - The Vercel Production build automatically runs `npm run smoke:production-email-config` semantics before compiling. It prints statuses only, never values, and stops the deployment when configuration is unsafe.
 3. Deploy. The app runs on the Vercel-assigned domain until you connect a custom domain.
+
+Vercel Production builds run the same sanitized check automatically before `next build` and
+fail before release if the required email configuration is unsafe. The standalone smoke
+command is strict for CI/build shells that already have the target variables injected. Do not
+pull Sensitive Production values into a local file; local and Preview builds do not enforce
+Production settings.
 
 ### Connecting `bytesizedcareers.com` (after purchase)
 
@@ -128,9 +136,9 @@ Email-provider variables are optional while delivery is disabled. See [`docs/ema
 
 `/admin/waitlist` — sign in with an allowlisted GitHub account.
 
-- **Summary counts:** total, email-only, partial, completed, seekers, recruiters, both, WhatsApp-consented, verified vs unverified.
+- **Summary counts:** total, email-only, partial, completed, seekers, recruiters, both, and verified vs unverified.
 - **Breakdowns:** top interests, top sources.
-- **Filters:** role, completion, verification, WhatsApp consent, interest, date range, email search — all synced to the URL.
+- **Filters:** role, completion, verification, interests, phone presence, source, dates, and contact search — all synced to the URL.
 - **Export CSV** reflects the active filters and includes verification status.
 
 ### Exporting lead buckets & backing up contacts
@@ -150,9 +158,9 @@ docker exec bytesized-pg psql -U postgres -d bytesized \
 ```
 (Against production, run the same statement via the Neon SQL editor.)
 
-### Sending only to consented groups
+### Channel choices do not activate sending
 
-Any promotional send **must** be gated on consent. WhatsApp: `whatsapp_consent = true`. Future email campaigns: `unsubscribe_status = 'subscribed'` **and** (once verification ships) `email_verification_status = 'verified'`. Never send promotional messages to leads who did not explicitly opt in.
+The phone step records independent WhatsApp, SMS, and voice choices with version/time/source metadata. There is no outbound implementation. Do not use a number, the legacy `whatsapp_consent` field, or the default email subscription status as permission. Any future channel must gate on the matching current choice and pass the documented provider, sender, suppression, legal, content, and withdrawal review first.
 
 ---
 

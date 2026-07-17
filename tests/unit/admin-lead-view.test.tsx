@@ -29,6 +29,12 @@ function lead(overrides: Partial<AdminLeadRow> = {}): AdminLeadRow {
     lastTransactionalEmailAt: new Date('2026-07-15T09:59:00Z'),
     phoneE164: '+919900000001',
     phoneCountryIso: 'IN',
+    phoneWhatsappConsent: true,
+    phoneSmsConsent: false,
+    phoneVoiceConsent: true,
+    phoneConsentVersion: '2026-07-17.v1',
+    phoneConsentRecordedAt: new Date('2026-07-15T10:00:30Z'),
+    phoneConsentSource: 'waitlist_phone_step',
     phoneVerificationStatus: 'verified',
     phoneVerificationRequestedAt: new Date('2026-07-15T10:01:00Z'),
     phoneVerificationLastSentAt: new Date('2026-07-15T10:01:00Z'),
@@ -89,7 +95,12 @@ describe('admin lead presentation', () => {
     expect(screen.getByText('Email verification requested')).toBeInTheDocument();
     expect(screen.getAllByText('Phone verified (legacy)').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/IST/).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/WhatsApp consent/i)).not.toBeInTheDocument();
+    expect(screen.getByText('WhatsApp')).toBeInTheDocument();
+    expect(screen.getByText('SMS')).toBeInTheDocument();
+    expect(screen.getByText('Phone calls')).toBeInTheDocument();
+    expect(screen.getAllByText('Opted in')).toHaveLength(2);
+    expect(screen.getByText('Not opted in')).toBeInTheDocument();
+    expect(screen.getByText('waitlist_phone_step')).toBeInTheDocument();
     expect(screen.queryByText(/token|hash|provider message/i)).not.toBeInTheDocument();
   });
 

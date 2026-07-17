@@ -6,6 +6,7 @@ import { updateLeadPhone } from '@/lib/db/queries/leads';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/utils/logger';
 import { actionOk, actionError, type ActionResult } from '@/types/waitlist';
+import type { PhoneChannelChoices } from '@/lib/consent/phone';
 
 export type SubmitPhoneInput =
   | { leadId: string; resumeToken: string; skipped: true }
@@ -15,11 +16,11 @@ export type SubmitPhoneInput =
       skipped: false;
       countryIso: string;
       phoneNumber: string;
-    };
+    } & PhoneChannelChoices;
 
 /**
- * Step 6 — optional phone capture. Promotional WhatsApp consent was removed from the
- * current form, so this action never accepts or updates the legacy consent columns.
+ * Step 6 — optional phone capture plus three independent, explicit channel choices.
+ * No outbound phone, SMS, or WhatsApp operation is triggered here.
  */
 export async function submitPhoneStep(
   input: SubmitPhoneInput,
@@ -81,6 +82,9 @@ export async function submitPhoneStep(
       skipped: false,
       phoneE164: normalized.e164,
       phoneCountryIso: normalized.countryIso,
+      whatsappConsent: parsed.data.whatsappConsent,
+      smsConsent: parsed.data.smsConsent,
+      voiceConsent: parsed.data.voiceConsent,
     });
     if (!ok) {
       return actionError(

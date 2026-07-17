@@ -18,9 +18,9 @@ export interface GetLeadForResumeInput {
 }
 
 /**
- * Resume lookup (plan §12). Returns masked, non-sensitive data only so a resumed session
- * on a shared device never exposes the raw email/phone. The token hash + expiry are
- * re-verified server-side on every call.
+ * Resume lookup (plan §12). The token hash + expiry are re-verified server-side on every
+ * call. Email stays masked; saved phone data is returned only to the authorized editing
+ * session so the visitor can accurately change or withdraw channel choices.
  */
 export async function getLeadForResume(
   input: GetLeadForResumeInput,

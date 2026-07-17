@@ -1,18 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { submitPhoneStep } from '@/lib/actions/submit-phone';
 import { Button } from '@/components/ui/button';
 import { CountrySelect } from '@/components/ui/country-select';
 import { formControlClassName } from '@/components/ui/form-control';
-import { PhoneIcon, ArrowRightIcon } from '@/components/ui/icons';
+import { ArrowRightIcon, MessageIcon, PhoneIcon } from '@/components/ui/icons';
+import {
+  EMPTY_PHONE_CHANNEL_CHOICES,
+  type PhoneChannelChoices,
+} from '@/lib/consent/phone';
+import { normalizePhone } from '@/lib/validation/phone';
 import { cn } from '@/lib/utils/cn';
+
+export interface PhoneStepValue extends PhoneChannelChoices {
+  phoneProvided: boolean;
+  phoneE164: string;
+  phoneCountryIso: string;
+}
 
 interface StepPhoneProps {
   leadId: string;
   resumeToken: string;
-  onComplete: (phoneProvided: boolean) => void;
+  initialValue: PhoneStepValue;
+  onComplete: (value: PhoneStepValue) => void;
 }
+
+const CHANNELS = [
+  {
+    key: 'whatsappConsent',
+    label: 'WhatsApp',
+    detail: 'Occasional early-access and relevant opportunity updates on WhatsApp.',
+    icon: MessageIcon,
+  },
+  {
+    key: 'smsConsent',
+    label: 'SMS',
+    detail: 'Occasional text updates about early access and relevant opportunities.',
+    icon: MessageIcon,
+  },
+  {
+    key: 'voiceConsent',
+    label: 'Phone calls',
+    detail: 'Occasional calls about early access or a potentially relevant opportunity.',
+    icon: PhoneIcon,
+  },
+] as const;
 
 function detectDefaultCountry(): string {
   if (typeof navigator !== 'undefined') {
@@ -20,22 +54,37 @@ function detectDefaultCountry(): string {
       const region = new Intl.Locale(navigator.language).maximize().region;
       if (region) return region;
     } catch {
-      // ignore
+      // Browser locale is only a convenience; the visitor can choose a country.
     }
   }
   return 'US';
 }
 
-/**
- * Phone step: validate + save only. The number is normalized (E.164) and stored — never
- * challenged with a code, and never implied to be verified. Leaving the field empty simply
- * moves on. No promotional consent is accepted or implied.
- */
-export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
-  const [countryIso, setCountryIso] = useState(detectDefaultCountry);
-  const [phoneNumber, setPhoneNumber] = useState('');
+/** Save an optional phone plus explicit, independently selectable channel choices. */
+export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: StepPhoneProps) {
+  const reduce = useReducedMotion();
+  const [countryIso, setCountryIso] = useState(
+    () => initialValue.phoneCountryIso || detectDefaultCountry(),
+  );
+  const [phoneNumber, setPhoneNumber] = useState(initialValue.phoneE164);
+  const [choices, setChoices] = useState<PhoneChannelChoices>({
+    whatsappConsent: initialValue.whatsappConsent,
+    smsConsent: initialValue.smsConsent,
+    voiceConsent: initialValue.voiceConsent,
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const normalizedPhone = useMemo(
+    () => normalizePhone(phoneNumber.trim(), countryIso),
+    [countryIso, phoneNumber],
+  );
+  const phoneIsValid = normalizedPhone !== null;
+
+  function updateChoice(key: keyof PhoneChannelChoices, checked: boolean) {
+    if (!phoneIsValid || busy) return;
+    setChoices((current) => ({ ...current, [key]: checked }));
+  }
 
   async function handleFinish() {
     if (busy) return;
@@ -51,14 +100,18 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
             skipped: false,
             countryIso,
             phoneNumber: trimmed,
+            ...choices,
           });
     setBusy(false);
     if (result.ok) {
-      onComplete(trimmed !== '');
+      onComplete({
+        phoneProvided: trimmed !== '',
+        phoneE164: normalizedPhone?.e164 ?? '',
+        phoneCountryIso: normalizedPhone?.countryIso ?? countryIso,
+        ...(trimmed === '' ? EMPTY_PHONE_CHANNEL_CHOICES : choices),
+      });
     } else {
-      setError(
-        result.error.fieldErrors?.phoneNumber?.[0] ?? result.error.message,
-      );
+      setError(result.error.fieldErrors?.phoneNumber?.[0] ?? result.error.message);
     }
   }
 
@@ -72,11 +125,10 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
         </span>
         <div>
           <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
-            Get first dibs on WhatsApp
+            Add a phone contact — optional
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Add your number and you&apos;ll hear first as matching opens —
-            before it hits your inbox.
+            Save a number and choose exactly how ByteSized may contact you in the future.
           </p>
         </div>
       </div>
@@ -88,7 +140,12 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
         <div className="flex flex-col gap-3 sm:flex-row">
           <CountrySelect
             value={countryIso}
-            onChange={setCountryIso}
+            onChange={(nextCountry) => {
+              setCountryIso(nextCountry);
+              if (!normalizePhone(phoneNumber.trim(), nextCountry)) {
+                setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
+              }
+            }}
             disabled={busy}
           />
           <input
@@ -99,30 +156,92 @@ export function StepPhone({ leadId, resumeToken, onComplete }: StepPhoneProps) {
             autoComplete="tel"
             placeholder="Phone number"
             value={phoneNumber}
-            onChange={(e) => {
-              setPhoneNumber(e.target.value);
+            onChange={(event) => {
+              const nextNumber = event.target.value;
+              setPhoneNumber(nextNumber);
+              if (!normalizePhone(nextNumber.trim(), countryIso)) {
+                setChoices(EMPTY_PHONE_CHANNEL_CHOICES);
+              }
               if (hasError) setError(null);
             }}
             aria-invalid={hasError}
-            aria-describedby={hasError ? 'phone-error' : undefined}
+            aria-describedby={hasError ? 'phone-error' : 'phone-help'}
             disabled={busy}
-            className={cn(
-              formControlClassName,
-              'min-h-13 shrink-0 rounded-xl sm:min-w-0 sm:flex-1',
-            )}
+            className={cn(formControlClassName, 'min-h-13 shrink-0 rounded-xl sm:min-w-0 sm:flex-1')}
           />
         </div>
 
         {hasError ? (
-          <p id="phone-error" role="alert" className="text-sm text-error">
-            {error}
-          </p>
+          <p id="phone-error" role="alert" className="text-sm text-error">{error}</p>
         ) : (
-          <p className="text-sm text-faint">
-            We&apos;ll only use it for match alerts you ask for — never anything else.
+          <p id="phone-help" className="text-sm text-faint">
+            No code is sent. A number by itself never opts you into WhatsApp, SMS, or calls.
           </p>
         )}
       </div>
+
+      <AnimatePresence initial={false}>
+        {phoneIsValid ? (
+          <motion.fieldset
+            key="phone-channels"
+            initial={{ opacity: 0, height: reduce ? 'auto' : 0, y: reduce ? 0 : 6 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: reduce ? 'auto' : 0, y: 0 }}
+            transition={{ duration: reduce ? 0 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="min-w-0 overflow-hidden"
+          >
+            <legend className="font-serif text-lg tracking-tight text-ink">How may we reach you?</legend>
+            <p id="phone-channel-help" className="mt-1 text-sm leading-relaxed text-muted">
+              Optional. Select any channels you want. Matching and phone outreach are not active today.
+            </p>
+            <div className="mt-3 grid gap-2.5">
+              {CHANNELS.map(({ key, label, detail, icon: Icon }) => (
+                <label
+                  key={key}
+                  className="group flex min-h-16 cursor-pointer items-start gap-3 rounded-xl border border-[color:var(--color-line)] bg-black/10 p-3.5 transition-colors has-[:checked]:border-accent/55 has-[:checked]:bg-accent/[0.08] focus-within:ring-2 focus-within:ring-accent/70 focus-within:ring-offset-2 focus-within:ring-offset-surface hover:border-[color:var(--color-line-strong)]"
+                >
+                  <span className="relative mt-0.5 size-5 shrink-0">
+                    <input
+                      id={`phone-${key}`}
+                      type="checkbox"
+                      checked={choices[key]}
+                      onChange={(event) => updateChoice(key, event.target.checked)}
+                      disabled={!phoneIsValid || busy}
+                      aria-describedby="phone-channel-help"
+                      className="peer absolute inset-0 size-5 appearance-none rounded-[0.35rem] border border-[color:var(--color-line-strong)] bg-black/20 transition-colors checked:border-accent checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
+                    />
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] font-bold text-canvas opacity-0 peer-checked:opacity-100">✓</span>
+                  </span>
+                  <Icon className="mt-0.5 size-5 shrink-0 text-accent" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-ink">
+                      {label}
+                      {choices[key] ? <span className="text-[10px] font-semibold tracking-[0.12em] text-accent uppercase">Selected</span> : null}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-muted">{detail}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-faint">
+              You can withdraw any choice at any time by emailing{' '}
+              <a href="mailto:legal@bytesizedcareers.com" className="text-accent underline-offset-4 hover:underline">
+                legal@bytesizedcareers.com
+              </a>. Standard carrier charges may apply if a channel is activated later.
+            </p>
+          </motion.fieldset>
+        ) : phoneNumber.trim() !== '' ? (
+          <motion.p
+            key="phone-channels-prompt"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="rounded-xl border border-[color:var(--color-line)] bg-black/10 px-3.5 py-3 text-sm text-faint"
+          >
+            Finish entering a valid number to choose contact channels.
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
 
       <div className="flex items-center justify-end gap-3">
         <Button onClick={handleFinish} disabled={busy}>

@@ -1,8 +1,10 @@
 # ByteSized Careers legal data audit
 
-Status: local pre-publication audit  
-Audit date: 17 July 2026  
-Repository: `guhanp09/bytesized-careers-waitlist`  
+Status: local pre-publication audit
+
+Audit date: 17 July 2026
+
+Repository: `guhanp09/bytesized-careers-waitlist`
 Scope: the current early-access website, not a launched marketplace
 
 This is a product and data-processing inventory, not legal advice or a compliance certification. It reflects code, schema, migrations, installed providers, and local behavior inspected on the audit date. No production system or personal lead value was accessed. Aggregate inspection of the local PostgreSQL database found zero local leads.

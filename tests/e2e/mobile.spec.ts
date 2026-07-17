@@ -32,6 +32,21 @@ async function expectInVisualViewport(locator: Locator) {
     .toBe(true);
 }
 
+async function reachPhoneStep(page: Page) {
+  await page.goto('/');
+  await page.fill('#full-name', 'Phone Consent Audit');
+  await page.fill('#email', `e2e.phone.consent.${Date.now()}@example.com`);
+  await page.getByRole('button', { name: 'Get early access' }).click();
+  await page.getByRole('button', { name: /looking for work/ }).click();
+  await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: 'Confirm your email' }).waitFor();
+  await page.getByRole('button', { name: /continue for now/i }).click();
+  await page.getByRole('heading', { name: /A little about how you work/ }).waitFor();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
+}
+
 for (const vp of VIEWPORTS) {
   test(`mobile controls and flow stay composed @ ${vp.name}`, async ({ page }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
@@ -225,6 +240,67 @@ test('landscape phone layout remains scrollable without horizontal overflow', as
   expect(
     await page.locator('html').evaluate((element) => getComputedStyle(element).webkitTextSizeAdjust),
   ).toBe('100%');
+});
+
+test('phone channel cards stay accessible and composed across release viewports', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await reachPhoneStep(page);
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).toHaveCount(0);
+  await page.selectOption('#country', 'IN');
+  await page.fill('#phone', '9900000001');
+
+  const whatsapp = page.getByRole('checkbox', { name: 'WhatsApp' });
+  const sms = page.getByRole('checkbox', { name: 'SMS' });
+  const calls = page.getByRole('checkbox', { name: 'Phone calls' });
+  await expect(whatsapp).not.toBeChecked();
+  await expect(sms).not.toBeChecked();
+  await expect(calls).not.toBeChecked();
+
+  await whatsapp.focus();
+  await expect(whatsapp).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(whatsapp).toBeChecked();
+  await expect(page.getByText('Selected')).toBeVisible();
+  await sms.check();
+  await calls.check();
+  await expect(sms).toBeChecked();
+  await expect(calls).toBeChecked();
+
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 360, height: 800 },
+    { width: 375, height: 667 },
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 768, height: 1024 },
+    { width: 1366, height: 768 },
+    { width: 1728, height: 1117 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect.poll(() => hasHorizontalOverflow(page)).toBe(false);
+    for (const checkbox of [whatsapp, sms, calls]) {
+      const box = await checkbox.locator('xpath=ancestor::label').boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    await expect(page.getByText(/withdraw any choice at any time/i)).toBeVisible();
+  }
+
+  // Simulate a short visual viewport while the phone keyboard is open: the primary
+  // action remains reachable and fully visible after the browser's normal scroll.
+  await page.setViewportSize({ width: 390, height: 430 });
+  await page.locator('#phone').focus();
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
+  await continueButton.scrollIntoViewIfNeeded();
+  await expectInVisualViewport(continueButton);
+
+  // Removing the phone immediately removes the controls and their selected state.
+  await page.fill('#phone', '');
+  await expect(whatsapp).toHaveCount(0);
+  await page.fill('#phone', '9900000001');
+  await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'SMS' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Phone calls' })).not.toBeChecked();
 });
 
 test('safe-area metadata and a 200% type-scale stress test preserve the form', async ({ page }) => {

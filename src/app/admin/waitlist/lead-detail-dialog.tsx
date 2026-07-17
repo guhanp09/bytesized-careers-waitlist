@@ -159,6 +159,12 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
             <Field label="Email verified">{formatIstDateTime(lead.emailVerifiedAt)}</Field>
             <Field label="Phone">{lead.phoneE164 ? <CopyValue value={lead.phoneE164} href={`tel:${lead.phoneE164}`} /> : <span className="text-faint">Not supplied</span>}</Field>
             <Field label="Phone ownership">{lead.phoneE164 ? lead.phoneVerificationStatus : 'Not applicable'}</Field>
+            <Field label="WhatsApp">{lead.phoneWhatsappConsent ? 'Opted in' : 'Not opted in'}</Field>
+            <Field label="SMS">{lead.phoneSmsConsent ? 'Opted in' : 'Not opted in'}</Field>
+            <Field label="Phone calls">{lead.phoneVoiceConsent ? 'Opted in' : 'Not opted in'}</Field>
+            <Field label="Channel choices recorded">{formatIstDateTime(lead.phoneConsentRecordedAt)}</Field>
+            <Field label="Consent copy version">{lead.phoneConsentVersion ?? 'Not recorded'}</Field>
+            <Field label="Consent source">{lead.phoneConsentSource ?? 'Not recorded'}</Field>
             <Field label="Phone verification requested">{formatIstDateTime(lead.phoneVerificationRequestedAt)}</Field>
             <Field label="Phone code last sent">{formatIstDateTime(lead.phoneVerificationLastSentAt)}</Field>
             <Field label="Phone verified (legacy)">{formatIstDateTime(lead.phoneVerifiedAt)}</Field>

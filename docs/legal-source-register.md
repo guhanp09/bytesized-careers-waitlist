@@ -1,6 +1,6 @@
 # ByteSized Careers legal source register
 
-Status: research record for local pre-publication review  
+Status: research record for local pre-publication review
 Access date for every web source: 17 July 2026
 
 Only official legislation, regulators, or provider primary materials are used as authority. Applicability remains conditional on where users are located, how the service is directed or promoted, campaign practices, and statutory thresholds. This register supports drafting; it is not legal advice.

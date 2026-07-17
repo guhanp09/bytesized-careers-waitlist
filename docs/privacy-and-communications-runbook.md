@@ -1,8 +1,10 @@
 # Privacy and communications runbook
 
-Owner: Guhan Purushothaman  
-Intake channel: `legal@bytesizedcareers.com`  
-Applies to: ByteSized Careers early-access records  
+Owner: Guhan Purushothaman
+
+Intake channel: `legal@bytesizedcareers.com`
+
+Applies to: ByteSized Careers early-access records
 Review date: 17 July 2026
 
 This is a concise manual procedure for the pre-launch service. It does not authorise access outside the ByteSized Careers waitlist systems, replace applicable legal deadlines, or permit personal information to be copied into this repository.

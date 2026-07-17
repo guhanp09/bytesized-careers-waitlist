@@ -50,6 +50,13 @@
       "when": 1784140443889,
       "tag": "0006_dizzy_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784250844522,
+      "tag": "0007_many_jackal",
+      "breakpoints": true
     }
   ]
 }

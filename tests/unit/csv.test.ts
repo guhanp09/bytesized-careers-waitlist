@@ -31,6 +31,12 @@ describe('operator CSV', () => {
     lastTransactionalEmailAt: new Date('2026-07-13T09:00:00Z'),
     phoneE164: '+447400123456',
     phoneCountryIso: 'GB',
+    phoneWhatsappConsent: true,
+    phoneSmsConsent: false,
+    phoneVoiceConsent: true,
+    phoneConsentVersion: '2026-07-17.v1',
+    phoneConsentRecordedAt: new Date('2026-07-13T09:02:00Z'),
+    phoneConsentSource: 'waitlist_phone_step',
     phoneVerificationStatus: 'unverified',
     phoneVerificationRequestedAt: null,
     phoneVerificationLastSentAt: null,
@@ -72,7 +78,9 @@ describe('operator CSV', () => {
     expect(CSV_HEADERS).toContain('Additional Comments');
     expect(CSV_HEADERS.slice(0, 4)).toEqual(['Lead ID', 'Full Name', 'Email', 'Role']);
     expect(CSV_HEADERS).toContain('Joined At IST');
-    expect(CSV_HEADERS).not.toContain('whatsapp_consent' as never);
+    expect(CSV_HEADERS).toContain('WhatsApp Channel Choice');
+    expect(CSV_HEADERS).toContain('SMS Channel Choice');
+    expect(CSV_HEADERS).toContain('Phone Call Channel Choice');
     expect(CSV_HEADERS.join(' ')).not.toMatch(/token|hash|challenge|provider/i);
   });
 
@@ -85,6 +93,9 @@ describe('operator CSV', () => {
     expect(csv).toContain('Writing & research: Long-form documentary fact-checking');
     expect(csv).not.toContain('video_editing');
     expect(csv).not.toContain('thumbnail_designers');
+    expect(csv).toContain('Opted in');
+    expect(csv).toContain('Not opted in');
+    expect(csv).toContain('waitlist_phone_step');
   });
 
   it('preserves long context and active filters can supply an already-filtered row set', () => {
