@@ -59,7 +59,9 @@ export function StepSuccess({ role }: StepSuccessProps) {
 
   async function handleShare() {
     const url =
-      typeof window !== 'undefined' ? window.location.origin : 'https://bytesizedcareers.com';
+      typeof window !== 'undefined'
+        ? new URL('/early-access', window.location.origin).toString()
+        : 'https://bytesizedcareers.com/early-access';
     try {
       if (navigator.share) {
         await navigator.share({ title: 'ByteSized Careers', url });

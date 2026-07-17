@@ -27,33 +27,24 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://bytesizedcareers.com'),
-  title: 'ByteSized Careers — Your brief for creator-economy work & talent',
+  title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
   description:
-    'Join the ByteSized Careers founding cohort and record what you do or who you may need before the creator-economy marketplace launches.',
+    'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
   robots: { index: true, follow: true },
   icons: {
     icon: [{ url: '/brand/bytesized-careers-mark.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/brand/bytesized-careers-mark-apple.png', type: 'image/png' }],
   },
   openGraph: {
-    title: 'ByteSized Careers — Early access',
+    title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
     description:
-      'Record what you do or who you may need before the creator-economy marketplace launches.',
+      'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
     type: 'website',
-    images: [
-      {
-        url: '/brand/bytesized-careers-og.png',
-        width: 1200,
-        height: 630,
-        alt: 'ByteSized Careers — your brief for creator-economy work and talent',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ByteSized Careers — Early access',
-    description: 'Record what you do or who you may need before the creator-economy marketplace launches.',
-    images: ['/brand/bytesized-careers-og.png'],
+    title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
+    description: 'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
   },
 };
 

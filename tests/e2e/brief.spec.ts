@@ -21,7 +21,7 @@ async function readDevCode(page: Page): Promise<string> {
 
 test('desktop rail is sticky and typesets real answers as they are given', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/early-access');
 
   const rail = page.locator('[data-brief-rail]');
   await expect(rail).toBeVisible();
@@ -57,7 +57,7 @@ test('the brief stays in the viewport through later steps — including the phon
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Meera Iyer');
   await page.fill('#email', uniqueEmail('sticky'));
   await page.click('button[type="submit"]');
@@ -92,7 +92,7 @@ test('the brief stays in the viewport through later steps — including the phon
 
 test('completing the flow files the brief with the stamp', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Dev Patel');
   await page.fill('#email', uniqueEmail('stamp'));
   await page.click('button[type="submit"]');
@@ -118,7 +118,7 @@ test('mobile drawer: pill appears after answers, opens the document, returns foc
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
 
   // No pill before the visitor has anything on paper.
   await expect(page.locator('[data-brief-pill]')).toHaveCount(0);
@@ -167,7 +167,7 @@ test('reduced motion renders composed stills — hero words at identity transfor
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
+  await page.goto('/early-access');
 
   const transforms = await page.$$eval('.hero-word', (els) =>
     els.map((el) => getComputedStyle(el).transform),
@@ -183,7 +183,7 @@ test('reduced motion renders composed stills — hero words at identity transfor
 });
 
 test('no canvas and no runaway rAF loop at idle', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await expect(page.locator('canvas')).toHaveCount(0);
 
   // Count rAF callbacks over 2s of idle on step 1 — CSS animations don't use rAF, and the

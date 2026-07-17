@@ -176,7 +176,7 @@ The phone step records independent WhatsApp, SMS, and voice choices with version
 
 ```
 src/
-  app/                     # routes: /, /privacy, /terms, /admin/*, /api/*
+  app/                     # brand /, early access + legal /early-access/*, /admin/*, /api/*
   components/waitlist/     # progressive steps + flow orchestrator + resume prompt
   components/ui/           # button, chip, checkbox, tap-target-card, country-select, …
   lib/

@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { LogoMark } from '@/components/landing/logo-mark';
 
 const legalLinks = [
-  { href: '/privacy', label: 'Privacy notice' },
-  { href: '/terms', label: 'Early-access terms' },
-  { href: '/cookies', label: 'Cookie & storage notice' },
+  { href: '/early-access/privacy', label: 'Early Access Privacy Notice' },
+  { href: '/early-access/terms', label: 'Early Access Terms of Use' },
+  { href: '/early-access/cookies', label: 'Early Access Storage Notice' },
 ] as const;
 
 interface LegalPageProps {
@@ -76,7 +76,7 @@ export function LegalPage({ eyebrow, title, summary, children }: LegalPageProps)
           <span className="font-mono text-[11px] tracking-wide">
             © {new Date().getFullYear()} ByteSized Careers
           </span>
-          <Link href="/" className="hover:text-muted hover:underline">
+          <Link href="/early-access" className="hover:text-muted hover:underline">
             Return to early access
           </Link>
         </div>

@@ -1,110 +1,101 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { WaitlistFlow } from '@/components/waitlist/waitlist-flow';
-import { BriefProvider } from '@/components/brief/brief-context';
-import { BriefRail } from '@/components/brief/brief-rail';
-import { BriefDrawer } from '@/components/brief/brief-drawer';
-import { ScrapsLayer } from '@/components/landing/scraps-layer';
-import { HeroStatement } from '@/components/landing/hero-statement';
 import { LogoMark } from '@/components/landing/logo-mark';
-import { MatchInterlude } from '@/components/landing/match-interlude';
-import { Reveal } from '@/components/landing/reveal';
-import { LockIcon } from '@/components/ui/icons';
-import { COLOPHON } from '@/lib/copy/flow-copy';
+import {
+  withSupportedAttribution,
+  type PublicSearchParams,
+} from '@/lib/attribution/early-access-link';
 
-/**
- * "The Brief" — the page writes a hiring brief with the visitor. Asymmetric editorial
- * composition on desktop (form column + sticky brief rail); a single centered column with
- * a bottom brief drawer on mobile. The margins carry the "noise" of scattered hiring,
- * which recedes as the visitor's brief takes shape.
- */
-export default function Home() {
+export const metadata: Metadata = {
+  title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
+  description:
+    'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
+  alternates: { canonical: 'https://bytesizedcareers.com/' },
+  openGraph: {
+    title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
+    description:
+      'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
+    url: 'https://bytesizedcareers.com/',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ByteSized Careers — Creator-Economy Hiring Marketplace',
+    description:
+      'ByteSized Careers is building a focused marketplace for creator-economy work and reliable talent.',
+  },
+};
+
+interface HomeProps {
+  searchParams: Promise<PublicSearchParams>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const earlyAccessHref = withSupportedAttribution('/early-access', await searchParams);
+
   return (
-    <BriefProvider>
-      {/* No overflow-hidden here: it would become the sticky rail's containing scroller
-          and defeat position:sticky. The scraps layer clips itself. */}
-      <div className="relative isolate min-h-dvh">
-        <ScrapsLayer />
+    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_78%_22%,rgba(91,140,255,0.12),transparent_28%),radial-gradient(circle_at_12%_92%,rgba(163,74,50,0.08),transparent_28%)]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-[15%] -z-10 hidden w-px bg-gradient-to-b from-transparent via-white/[0.07] to-transparent lg:block" />
+      <div aria-hidden="true" className="pointer-events-none absolute top-[18%] right-[8%] -z-10 size-40 rounded-full border border-white/[0.055] sm:size-64 lg:size-80" />
 
-        {/* Masthead */}
-        <header className="safe-page-gutter safe-masthead mx-auto flex max-w-6xl items-center justify-between pb-6">
-          <span className="animate-fade-up flex items-center gap-2.5">
-            <LogoMark />
-            <span className="font-serif text-base font-semibold tracking-tight text-ink">
-              ByteSized Careers
-            </span>
+      <header className="safe-page-gutter safe-masthead mx-auto flex w-full max-w-6xl items-center justify-between pb-8">
+        <span className="animate-fade-up flex items-center gap-2.5">
+          <LogoMark />
+          <span className="font-serif text-base font-semibold tracking-tight text-ink">
+            ByteSized Careers
           </span>
-          <span className="animate-fade-up fade-delay-1 hidden font-mono text-[10px] tracking-[0.18em] uppercase text-faint sm:block">
-            Founding cohort · No. 001
-          </span>
-        </header>
+        </span>
+        <span className="animate-fade-up fade-delay-1 hidden font-mono text-[10px] tracking-[0.18em] uppercase text-faint sm:block">
+          Marketplace in development
+        </span>
+      </header>
 
-        <main className="safe-page-gutter mx-auto max-w-6xl pb-20">
-          {/* The companion column spans the entire editorial journey (hero → form →
-              interlude → colophon), so the sticky brief accompanies every step instead of
-              bottoming out when a later question scrolls into focus. */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-14 xl:gap-20">
-            {/* Primary column: the interview, then the editorial matter */}
-            <div className="mx-auto w-full max-w-2xl lg:mx-0">
-              <HeroStatement />
-              <div className="animate-fade-up fade-delay-3 mt-9">
-                <WaitlistFlow />
-              </div>
+      <main className="safe-page-gutter mx-auto flex w-full max-w-6xl flex-1 items-center py-12 sm:py-16 lg:py-24">
+        <section className="max-w-4xl">
+          <p className="animate-fade-up font-mono text-[11px] font-medium tracking-[0.2em] uppercase text-accent">
+            Byte-Sized Careers
+          </p>
+          <h1 className="animate-fade-up fade-delay-1 mt-6 max-w-4xl font-serif text-[clamp(3rem,8.2vw,7rem)] leading-[0.91] tracking-[-0.052em] text-ink text-balance">
+            Creator-economy hiring, brought into focus.
+          </h1>
+          <p className="animate-fade-up fade-delay-2 mt-7 max-w-2xl text-base leading-7 text-muted sm:text-lg sm:leading-8">
+            ByteSized Careers is building a focused marketplace for people looking for creator-economy work and the teams looking for reliable talent.
+          </p>
 
-              <MatchInterlude />
-
-              {/* Colophon trust strip */}
-              <Reveal className="mt-20">
-                <section className="flex items-start gap-3 border-t border-[color:var(--color-line)] pt-8">
-                  <span className="mt-0.5 text-accent">
-                    <LockIcon className="size-4" />
-                  </span>
-                  <p className="max-w-2xl text-sm leading-relaxed text-muted">
-                    {COLOPHON}{' '}
-                    <Link href="/privacy" className="text-accent hover:underline">
-                      Privacy
-                    </Link>{' '}
-                    ·{' '}
-                    <Link href="/terms" className="text-accent hover:underline">
-                      Terms
-                    </Link>
-                    {' · '}
-                    <Link href="/cookies" className="text-accent hover:underline">
-                      Storage
-                    </Link>
-                  </p>
-                </section>
-              </Reveal>
-            </div>
-
-            {/* The living artifact — pinned alongside the whole journey */}
-            <div className="relative mt-10 lg:mt-24">
-              <BriefRail />
-            </div>
+          <div className="animate-fade-up fade-delay-3 mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <Link
+              href={earlyAccessHref}
+              className="inline-flex min-h-12 items-center justify-center rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-strong"
+            >
+              Join early access
+              <span aria-hidden="true" className="ml-2">→</span>
+            </Link>
+            <p className="text-sm text-faint">Early access is now open.</p>
           </div>
-        </main>
 
-        {/* Footer colophon */}
-        <footer className="safe-page-gutter safe-footer mx-auto max-w-6xl pt-10 text-sm text-faint">
-          <div className="flex flex-col items-start justify-between gap-4 border-t border-[color:var(--color-line)] pt-8 sm:flex-row sm:items-baseline">
-            <span className="font-mono text-[11px] tracking-wide">
-              © {new Date().getFullYear()} ByteSized Careers — set in Fraunces & Plex
-            </span>
-            <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/privacy" className="hover:text-muted">
-                Privacy
-              </Link>
-              <Link href="/terms" className="hover:text-muted">
-                Terms
-              </Link>
-              <Link href="/cookies" className="hover:text-muted">
-                Storage
-              </Link>
-            </nav>
+          <div className="mt-14 flex items-center gap-3 border-t border-[color:var(--color-line)] pt-6 sm:mt-20">
+            <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+            <p className="font-mono text-[10px] tracking-[0.16em] uppercase text-muted">
+              The marketplace is currently being built.
+            </p>
           </div>
-        </footer>
+        </section>
+      </main>
 
-        <BriefDrawer />
-      </div>
-    </BriefProvider>
+      <footer className="safe-page-gutter safe-footer mx-auto w-full max-w-6xl pt-8 text-sm text-faint">
+        <div className="flex flex-col gap-5 border-t border-[color:var(--color-line)] pt-7 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="font-mono text-[11px] tracking-wide">© {new Date().getFullYear()} ByteSized Careers</p>
+            <p className="mt-1.5 text-xs">Early-access documents apply to the current early-access programme.</p>
+          </div>
+          <nav aria-label="Early-access legal" className="flex flex-wrap gap-x-5 gap-y-3">
+            <Link href="/early-access/privacy" className="min-h-11 py-3 hover:text-muted">Early Access Privacy</Link>
+            <Link href="/early-access/terms" className="min-h-11 py-3 hover:text-muted">Early Access Terms</Link>
+            <Link href="/early-access/cookies" className="min-h-11 py-3 hover:text-muted">Early Access Storage</Link>
+          </nav>
+        </div>
+      </footer>
+    </div>
   );
 }

@@ -32,7 +32,7 @@ test('capture the mobile release-review evidence set', async ({ page, context })
     { width: 412, height: 915 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto('/');
+    await page.goto('/early-access');
     await page.locator('[data-waitlist-card]').evaluate((element) => {
       const rect = element.getBoundingClientRect();
       if (rect.bottom > window.innerHeight) {
@@ -43,7 +43,7 @@ test('capture the mobile release-review evidence set', async ({ page, context })
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Mobile Visual Audit');
   await page.fill('#email', `e2e.mobile.visual.${Date.now()}@example.com`);
   await page.getByRole('button', { name: 'Get early access' }).click();
@@ -97,6 +97,6 @@ test('capture the mobile release-review evidence set', async ({ page, context })
     window.scrollTo({ top: window.scrollY + rect.top - 64, behavior: 'auto' });
   });
   await shot(page, 'two-briefs-one-table-390x844');
-  await expect(page.getByRole('link', { name: 'Privacy' }).last()).toHaveAttribute('href', '/privacy');
-  await expect(page.getByRole('link', { name: 'Terms' }).last()).toHaveAttribute('href', '/terms');
+  await expect(page.getByRole('link', { name: 'Privacy' }).last()).toHaveAttribute('href', '/early-access/privacy');
+  await expect(page.getByRole('link', { name: 'Terms' }).last()).toHaveAttribute('href', '/early-access/terms');
 });

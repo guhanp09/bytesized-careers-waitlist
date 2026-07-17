@@ -33,7 +33,7 @@ async function expectInVisualViewport(locator: Locator) {
 }
 
 async function reachPhoneStep(page: Page) {
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Phone Consent Audit');
   await page.fill('#email', `e2e.phone.consent.${Date.now()}@example.com`);
   await page.getByRole('button', { name: 'Get early access' }).click();
@@ -50,7 +50,7 @@ async function reachPhoneStep(page: Page) {
 for (const vp of VIEWPORTS) {
   test(`mobile controls and flow stay composed @ ${vp.name}`, async ({ page }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    await page.goto('/');
+    await page.goto('/early-access');
 
     await expect.poll(() => hasHorizontalOverflow(page)).toBe(false);
 
@@ -165,7 +165,7 @@ for (const vp of VIEWPORTS) {
 
 test('validation, focus and keyboard-sized viewport never overlap the opening controls', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 430 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Taylor Morgan');
   await page.fill('#email', 'not-an-email');
   await page.getByRole('button', { name: 'Get early access' }).click();
@@ -184,7 +184,7 @@ test('validation, focus and keyboard-sized viewport never overlap the opening co
 for (const role of ['recruiter', 'both'] as const) {
   test(`${role} mobile preference path reaches contextual questions`, async ({ page }) => {
     await page.setViewportSize({ width: role === 'recruiter' ? 360 : 393, height: 640 });
-    await page.goto('/');
+    await page.goto('/early-access');
     await page.fill('#full-name', 'Mobile Path Audit');
     await page.fill('#email', `e2e.mobile.${role}.${Date.now()}@example.com`);
     await page.getByRole('button', { name: 'Get early access' }).click();
@@ -215,7 +215,7 @@ for (const role of ['recruiter', 'both'] as const) {
 
 test('mobile typing hides the brief and keeps the active custom field above a short viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Keyboard Audit');
   await page.fill('#email', `e2e.mobile.keyboard.${Date.now()}@example.com`);
   await page.getByRole('button', { name: 'Get early access' }).click();
@@ -233,7 +233,7 @@ test('mobile typing hides the brief and keeps the active custom field above a sh
 
 test('landscape phone layout remains scrollable without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.locator('#email').focus();
   await expectInVisualViewport(page.locator('#email'));
   await expect.poll(() => hasHorizontalOverflow(page)).toBe(false);
@@ -305,7 +305,7 @@ test('phone channel cards stay accessible and composed across release viewports'
 
 test('safe-area metadata and a 200% type-scale stress test preserve the form', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
     'content',
     /viewport-fit=cover/,
@@ -323,7 +323,7 @@ test('safe-area metadata and a 200% type-scale stress test preserve the form', a
 
 test('a delayed progressive save keeps its honest state without scroll or layout jumps', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.fill('#full-name', 'Slow Save Audit');
   await page.fill('#email', `e2e.mobile.slow-save.${Date.now()}@example.com`);
   await page.getByRole('button', { name: 'Get early access' }).click();

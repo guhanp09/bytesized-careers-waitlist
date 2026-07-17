@@ -31,7 +31,7 @@ async function expectInViewport(locator: Locator) {
 }
 
 test('completes the full v2 flow with mock email and validated phone capture', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, uniqueEmail('full'), 'Asha Kapoor');
   await page.click('button[type="submit"]');
 
@@ -88,7 +88,7 @@ test('completes the full v2 flow with mock email and validated phone capture', a
 });
 
 test('invalid email shows an error and does not advance', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, 'not-an-email');
   await page.click('button[type="submit"]');
   await expect(page.locator('#email-error')).toBeVisible();
@@ -96,7 +96,7 @@ test('invalid email shows an error and does not advance', async ({ page }) => {
 });
 
 test('skipping email verification keeps the flow moving (lead already saved)', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, uniqueEmail('skip'));
   await page.click('button[type="submit"]');
   await page.getByRole('button', { name: /looking for work/ }).click();
@@ -110,20 +110,36 @@ test('skipping email verification keeps the flow moving (lead already saved)', a
 });
 
 test('resumes after reload with a masked email', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, uniqueEmail('resume'), 'Rina Das');
   await page.click('button[type="submit"]');
   await page.getByRole('button', { name: /looking for work/ }).click();
   await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
 
+  await page.goto('/early-access');
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /What kind of work/ })).toBeVisible();
+});
+
+test('root never auto-resumes but its CTA restores existing early-access progress', async ({ page }) => {
+  await page.goto('/early-access');
+  await fillFirstStep(page, uniqueEmail('root-resume'), 'Rina Das');
+  await page.click('button[type="submit"]');
+  await page.getByRole('button', { name: /looking for work/ }).click();
+  await page.getByRole('heading', { name: /What kind of work/ }).waitFor();
+
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toHaveCount(0);
+  await expect(page.locator('[data-waitlist-card]')).toHaveCount(0);
+  await page.getByRole('link', { name: 'Join early access' }).click();
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('heading', { name: /What kind of work/ })).toBeVisible();
 });
 
 test('resume restores the saved phone and independent channel choices for editing', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, uniqueEmail('phone-resume'), 'Rina Das');
   await page.click('button[type="submit"]');
   await page.getByRole('button', { name: /looking for work/ }).click();
@@ -139,7 +155,7 @@ test('resume restores the saved phone and independent channel choices for editin
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
 
-  await page.goto('/');
+  await page.goto('/early-access');
   await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('heading', { name: /genuinely useful/ }).waitFor();
@@ -155,7 +171,7 @@ test('resume restores the saved phone and independent channel choices for editin
 });
 
 test('ambient background is decorative and never blocks the form', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   const bg = page.locator('[data-ambient-paused]');
   await expect(bg).toHaveCount(1);
   await expect(bg).toHaveAttribute('aria-hidden', 'true');
@@ -176,7 +192,7 @@ test('progress is qualitative — no numeric "X of Y" count anywhere in the flow
     const body = await page.locator('body').innerText();
     expect(body).not.toMatch(/\b\d+\s+of\s+\d+\b/i);
   };
-  await page.goto('/');
+  await page.goto('/early-access');
   await noCount();
   await fillFirstStep(page, uniqueEmail('nocount'));
   await page.click('button[type="submit"]');
@@ -192,7 +208,7 @@ test('progress is qualitative — no numeric "X of Y" count anywhere in the flow
 test('reduced motion still renders and advances the flow', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, `e2e.rm.${Date.now()}@example.com`);
   await page.click('button[type="submit"]');
   await page.getByRole('button', { name: /looking for work/ }).click();
@@ -206,7 +222,7 @@ test('reduced motion still renders and advances the flow', async ({ page }) => {
 
 test('long-step navigation focuses and positions the new step without autosave scroll jumps', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 800 });
-  await page.goto('/');
+  await page.goto('/early-access');
   await fillFirstStep(page, uniqueEmail('position'));
   await page.click('button[type="submit"]');
   await page.getByRole('button', { name: /looking for work/ }).click();
@@ -236,7 +252,7 @@ test('long-step navigation focuses and positions the new step without autosave s
 });
 
 test('semantic controls expose coherent desktop cursor affordances', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/early-access');
   const email = page.locator('#email');
   const fullName = page.locator('#full-name');
   const submit = page.getByRole('button', { name: 'Get early access' });

@@ -161,11 +161,11 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
         <p id="email-trust" className="text-xs leading-5 text-faint sm:text-sm">
           We use your email for verification and early-access, launch and invitation updates.
           By selecting Get early access, you confirm you are 18 or older, agree to the{' '}
-          <Link href="/terms" className="text-muted underline underline-offset-4 hover:text-ink">
+          <Link href="/early-access/terms" className="text-muted underline underline-offset-4 hover:text-ink">
             Early-Access Terms
           </Link>{' '}
           and acknowledge the{' '}
-          <Link href="/privacy" className="text-muted underline underline-offset-4 hover:text-ink">
+          <Link href="/early-access/privacy" className="text-muted underline underline-offset-4 hover:text-ink">
             Privacy Notice
           </Link>
           . Optional launch, invitation and relevance emails can be stopped separately from deleting your registration.

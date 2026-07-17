@@ -27,7 +27,7 @@ This review aligns the public legal pages with the inspected product and the ope
 
 ## Public-document status
 
-- `/privacy`, `/terms` and `/cookies` contain no drafting placeholders.
+- `/early-access/privacy`, `/early-access/terms` and `/early-access/cookies` contain no drafting placeholders; the former root-level URLs are temporary compatibility redirects only.
 - The operator, location, contact, age rule, communications, retention, future invitations and governing-law decisions are consistent across the pages.
 - The collection notice confirms 18+ eligibility and links the Early-Access Terms and Privacy Notice.
 - The phone step accurately states there is no current phone outreach, never infers consent from a number, and records each optional channel separately.
