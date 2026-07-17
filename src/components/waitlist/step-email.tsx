@@ -52,10 +52,10 @@ export function StepEmail({ onComplete, changeSession, initialFullName = '' }: S
             fullName,
             email,
             honeypot,
-            ...attribution,
+            attribution,
             ...changeSession,
           })
-        : await submitEmailStep({ fullName, email, honeypot, ...attribution });
+        : await submitEmailStep({ fullName, email, honeypot, attribution });
       if (result.ok) {
         onComplete(result.data);
       } else {

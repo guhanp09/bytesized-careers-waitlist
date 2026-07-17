@@ -1,24 +1,24 @@
-const ATTRIBUTION_LIMITS = {
-  source: 120,
-  ref: 120,
-  utm_source: 200,
-  utm_medium: 200,
-  utm_campaign: 200,
-} as const;
+import {
+  ATTRIBUTION_PARAMETER_LIMITS,
+  sanitizeAttributionParameter,
+  type AttributionParameter,
+} from './campaign';
 
 export type PublicSearchParams = Record<string, string | string[] | undefined>;
 
-/** Forward only the attribution keys already understood by the registration flow. */
+/** Forward only the bounded first-party campaign/referral allowlist. */
 export function withSupportedAttribution(
   pathname: string,
   searchParams: PublicSearchParams,
 ): string {
   const forwarded = new URLSearchParams();
 
-  for (const [key, maxLength] of Object.entries(ATTRIBUTION_LIMITS)) {
+  for (const key of Object.keys(ATTRIBUTION_PARAMETER_LIMITS) as AttributionParameter[]) {
     const candidate = searchParams[key];
-    const value = Array.isArray(candidate) ? candidate[0] : candidate;
-    if (!value || value.length > maxLength || /[\u0000-\u001f\u007f]/u.test(value)) continue;
+    // Repeated campaign keys are ambiguous and are not forwarded.
+    if (Array.isArray(candidate)) continue;
+    const value = candidate ? sanitizeAttributionParameter(key, candidate) : undefined;
+    if (!value) continue;
     forwarded.set(key, value);
   }
 

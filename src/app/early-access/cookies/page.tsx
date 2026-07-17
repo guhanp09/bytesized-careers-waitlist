@@ -21,6 +21,14 @@ export const metadata: Metadata = {
 
 const rows = [
   {
+    name: 'bytesized_waitlist_attribution (localStorage)',
+    category: 'Functional / first-party campaign attribution',
+    purpose: 'Preserves how the visitor reached early access through the requested registration journey.',
+    data: 'Allowlisted UTM/referral values, external referrer hostname, landing path, captured time, and version; no contact details, resume credential, advertising click ID, or cross-site identifier.',
+    duration: 'Persists until cleared through browser controls; the server record becomes authoritative after email save.',
+    timing: 'Set on a visit to the ByteSized Careers root or early-access page, before a lead exists.',
+  },
+  {
     name: 'bytesized_waitlist_resume (localStorage)',
     category: 'Functional / requested flow',
     purpose: 'Restores a saved early-access brief in the same browser.',
@@ -59,11 +67,11 @@ export default function CookiesPage() {
     <LegalPage
       eyebrow="ByteSized Careers · Early access"
       title="Early Access Storage Notice"
-      summary="The current public experience has no analytics or advertising storage. It keeps one first-party resume record after registration begins; restricted admin authentication uses security cookies."
+      summary="The current public experience has no advertising storage. It keeps a small first-party campaign-attribution record and, after registration begins, a resume record; restricted admin authentication uses security cookies."
     >
       <LegalCallout title="Current scope and consent conclusion">
         <p>
-          The audited version does not need a general tracking banner: it has no analytics, advertising, or
+          The audited version does not need a general tracking banner: it has no third-party analytics, advertising, or
           cross-site profiling technologies. The resume record supports the registration flow the visitor requests,
           and admin cookies are necessary for security. This conclusion must be revisited before any non-essential
           analytics, advertising, session replay, or similar technology is added.
@@ -104,7 +112,8 @@ export default function CookiesPage() {
           intentionally set the WebAuthn challenge cookie available in the library because WebAuthn is not configured.
         </p>
         <p>
-          Form answers—including an optional phone number and separate WhatsApp, SMS, or call choices—are saved in
+          Form answers—including an optional phone number and separate WhatsApp, SMS, or call choices—and validated
+          first/last-touch attribution are saved in
           the server-side waitlist record described in the <Link href="/early-access/privacy">Privacy Notice</Link>. Those choices
           do not add another cookie or browser-storage item and do not activate tracking or phone communications.
         </p>
@@ -113,7 +122,9 @@ export default function CookiesPage() {
       <LegalSection number="03" title="Your controls">
         <p>
           You can clear site data through browser settings. Choosing “Start over” after a saved registration is found
-          also removes the resume record. Blocking localStorage may prevent resume convenience but should not prevent
+          also removes the resume record. Campaign attribution remains until cleared through browser settings so a
+          later return does not silently become direct. Blocking localStorage may reduce attribution continuity and
+          prevent resume convenience but should not prevent
           a new registration. Blocking the admin security cookies prevents restricted administrators from signing in.
         </p>
         <p>

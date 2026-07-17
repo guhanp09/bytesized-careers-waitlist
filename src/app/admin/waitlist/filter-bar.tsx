@@ -14,6 +14,7 @@ import { FilterSearch } from './filter-search';
 interface FilterBarProps {
   filters: LeadFilters;
   sources: string[];
+  mediums: string[];
   campaigns: string[];
 }
 
@@ -31,7 +32,7 @@ function BooleanOptions({ yes, no }: { yes: string; no: string }) {
   );
 }
 
-export function FilterBar({ filters, sources, campaigns }: FilterBarProps) {
+export function FilterBar({ filters, sources, mediums, campaigns }: FilterBarProps) {
   const exportHref = `/api/admin/waitlist/export?${filtersToQuery(filters)}`;
   const activeFilters = [
     filters.role && `Intent: ${filters.role}`,
@@ -46,7 +47,9 @@ export function FilterBar({ filters, sources, campaigns }: FilterBarProps) {
     filters.hasCustomResponse !== undefined && (filters.hasCustomResponse ? 'Has custom requirement' : 'No custom requirement'),
     filters.hasAdditionalContext !== undefined && (filters.hasAdditionalContext ? 'Has comments' : 'No comments'),
     filters.source && `Source: ${filters.source}`,
+    filters.medium && `Medium: ${filters.medium}`,
     filters.utmCampaign && `Campaign: ${filters.utmCampaign}`,
+    filters.attributionModel && `Attribution: ${filters.attributionModel} touch`,
     filters.dateFrom && `Joined from ${filters.dateFrom} IST`,
     filters.dateTo && `Joined through ${filters.dateTo} IST`,
     filters.updatedFrom && `Updated from ${filters.updatedFrom} IST`,
@@ -184,14 +187,28 @@ export function FilterBar({ filters, sources, campaigns }: FilterBarProps) {
             </select>
           </label>
           <label className={fieldClass}>
-            Source
+            Attribution view
+            <select name="attributionModel" defaultValue={filters.attributionModel ?? 'first'} className={controlClass}>
+              <option value="first">First touch</option>
+              <option value="last">Last touch</option>
+            </select>
+          </label>
+          <label className={fieldClass}>
+            Attribution source
             <select name="source" defaultValue={filters.source ?? ''} className={controlClass}>
               <option value="">Any</option>
               {sources.map((source) => <option key={source} value={source}>{source}</option>)}
             </select>
           </label>
           <label className={fieldClass}>
-            UTM campaign
+            Attribution medium
+            <select name="medium" defaultValue={filters.medium ?? ''} className={controlClass}>
+              <option value="">Any</option>
+              {mediums.map((medium) => <option key={medium} value={medium}>{medium}</option>)}
+            </select>
+          </label>
+          <label className={fieldClass}>
+            Attribution campaign
             <select name="utmCampaign" defaultValue={filters.utmCampaign ?? ''} className={controlClass}>
               <option value="">Any</option>
               {campaigns.map((campaign) => <option key={campaign} value={campaign}>{campaign}</option>)}

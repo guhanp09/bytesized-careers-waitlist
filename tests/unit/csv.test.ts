@@ -10,6 +10,11 @@ describe('escapeCsvCell', () => {
     expect(escapeCsvCell('a"b')).toBe('"a""b"');
     expect(escapeCsvCell('a\nb')).toBe('"a\nb"');
   });
+  it('neutralizes spreadsheet formula starters', () => {
+    expect(escapeCsvCell('=HYPERLINK("https://bad")')).toBe(`"'=HYPERLINK(""https://bad"")"`);
+    expect(escapeCsvCell('+447400123456')).toBe("'+447400123456");
+    expect(escapeCsvCell('@SUM(A1)')).toBe("'@SUM(A1)");
+  });
 });
 
 describe('operator CSV', () => {
@@ -67,6 +72,25 @@ describe('operator CSV', () => {
     utmMedium: 'social',
     utmCampaign: 'launch',
     referrer: 'https://example.com',
+    firstTouchAttribution: {
+      version: 1,
+      kind: 'campaign',
+      source: 'reddit',
+      medium: 'community',
+      campaign: 'editor-feedback',
+      landingPath: '/',
+      capturedAt: '2026-07-13T08:00:00.000Z',
+    },
+    lastTouchAttribution: {
+      version: 1,
+      kind: 'campaign',
+      source: 'meta',
+      medium: 'paid-social',
+      campaign: 'talent-india',
+      content: '=formula-attempt',
+      landingPath: '/early-access',
+      capturedAt: '2026-07-13T09:00:00.000Z',
+    },
     createdAt: new Date('2026-07-13T10:00:00Z'),
     updatedAt: new Date('2026-07-13T10:05:00Z'),
     completedAt: new Date('2026-07-13T10:05:00Z'),
@@ -81,6 +105,8 @@ describe('operator CSV', () => {
     expect(CSV_HEADERS).toContain('WhatsApp Channel Choice');
     expect(CSV_HEADERS).toContain('SMS Channel Choice');
     expect(CSV_HEADERS).toContain('Phone Call Channel Choice');
+    expect(CSV_HEADERS).toContain('first_touch_source');
+    expect(CSV_HEADERS).toContain('last_touch_campaign');
     expect(CSV_HEADERS.join(' ')).not.toMatch(/token|hash|challenge|provider/i);
   });
 
@@ -96,6 +122,11 @@ describe('operator CSV', () => {
     expect(csv).toContain('Opted in');
     expect(csv).toContain('Not opted in');
     expect(csv).toContain('waitlist_phone_step');
+    expect(csv).toContain("'+447400123456");
+    expect(csv).toContain('linkedin');
+    expect(csv).toContain('editor-feedback');
+    expect(csv).toContain('talent-india');
+    expect(csv).toContain("'=formula-attempt");
   });
 
   it('preserves long context and active filters can supply an already-filtered row set', () => {

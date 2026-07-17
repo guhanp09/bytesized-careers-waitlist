@@ -9,7 +9,7 @@ and planning documents are compatibility references only.
 | --- | --- | --- | --- | --- | --- | --- |
 | Name | All new signups | Required; trimmed and internal whitespace collapsed | `fullName` | `submitEmailStep`, `changeEmailStep` | `full_name` (nullable for legacy rows) | Lead identity; case and Unicode preserved |
 | Email / change email | All | Required | `email` | `submitEmailStep`, `changeEmailStep` | `original_email`, `normalized_email` | Contact identity |
-| First-touch attribution | All | Passive | source, UTMs, referrer | `submitEmailStep` | attribution columns | Secondary operational data |
+| First/last-touch attribution | All | Passive; allowlisted campaign/referral data only | versioned local attribution state | `submitEmailStep`, token-scoped resume sync | structured JSONB touch records; legacy columns retained | Separate detail blocks, performance cohorts, filters, and CSV fields |
 | What brings you here? | All | Required | `role` | `submitRoleStep` | `role` | Prominent intent badge/filter |
 | Work categories and individual work | Seeker, Both | Skippable | `jobCategories` | `submitPreferencesStep` | `seeker_needs` v1 | Grouped seeker section and readable CSV |
 | Section-specific seeker Other | Seeker, Both | Conditional | `jobCategoryOthers` | `submitPreferencesStep` | matching `seeker_needs.groups[].customResponse` | Under its source group |
@@ -58,7 +58,7 @@ constants, so summaries are deterministic and display copy is not duplicated in 
 - `role`, `seeker_needs`, `recruiter_needs`, `lead_data_version`.
 - Current context fields, including work formats and organisation type because those controls
   are present in the actual UI.
-- `additional_notes`, funnel/completion fields, attribution, and timestamps.
+- `additional_notes`, funnel/completion fields, structured first/last-touch attribution, and timestamps.
 - Transactional delivery status as secondary operational metadata.
 
 ## Compatibility/deprecated fields
@@ -74,6 +74,8 @@ constants, so summaries are deterministic and display copy is not duplicated in 
   validation/actions no longer accept them.
 - Promotional email unsubscribe fields remain compatibility/future-channel metadata, not
   current public-form answers.
+- `source`, `utm_source`, `utm_medium`, `utm_campaign`, and `referrer` are retained as
+  compatibility-only first-touch fields. New reporting prefers the structured JSONB records.
 
 No compatibility column is removed by the v2 migration.
 
@@ -92,3 +94,7 @@ Migration `0005` is additive. It creates the two JSONB profiles, version and rea
 fields, backfills only mappings that are deterministic, and adds GIN indexes. Legacy generic
 Other values are preserved in place rather than guessed. Production migration requires a
 separate explicit approval.
+
+Migration `0008` is also additive. It adds nullable `first_touch_attribution` and
+`last_touch_attribution` JSONB columns. It does not backfill or guess historical attribution,
+drop a column, or modify existing personal information.

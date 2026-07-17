@@ -73,8 +73,14 @@ export function parseLeadFilters(params: RawParams): LeadFilters {
 
   const source = first(params.source);
   if (source) filters.source = source.slice(0, 120);
+  const medium = first(params.medium);
+  if (medium) filters.medium = medium.slice(0, 120);
   const utmCampaign = first(params.utmCampaign);
   if (utmCampaign) filters.utmCampaign = utmCampaign.slice(0, 160);
+  const attributionModel = first(params.attributionModel);
+  if (attributionModel === 'first' || attributionModel === 'last') {
+    filters.attributionModel = attributionModel;
+  }
   const dateFrom = first(params.dateFrom);
   if (dateFrom && isIsoDate(dateFrom)) filters.dateFrom = dateFrom;
   const dateTo = first(params.dateTo);
@@ -100,7 +106,9 @@ export function filtersToQuery(filters: LeadFilters): string {
     ['recruiterGroup', filters.recruiterGroup ?? ''],
     ['recruiterNeed', filters.recruiterNeed ?? ''],
     ['source', filters.source ?? ''],
+    ['medium', filters.medium ?? ''],
     ['utmCampaign', filters.utmCampaign ?? ''],
+    ['attributionModel', filters.attributionModel ?? ''],
     ['dateFrom', filters.dateFrom ?? ''],
     ['dateTo', filters.dateTo ?? ''],
     ['updatedFrom', filters.updatedFrom ?? ''],

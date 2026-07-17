@@ -42,6 +42,7 @@ describe('legal pages', () => {
 
     expect(screen.getByRole('heading', { name: 'Early Access Storage Notice', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('bytesized_waitlist_resume (localStorage)')).toBeInTheDocument();
+    expect(screen.getByText('bytesized_waitlist_attribution (localStorage)')).toBeInTheDocument();
     expect(screen.getByText(/does not need a general tracking banner/i)).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'No analytics or advertising storage' }),

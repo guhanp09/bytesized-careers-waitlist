@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LogoMark } from '@/components/landing/logo-mark';
+import { AttributionCapture } from '@/components/attribution/attribution-capture';
 import {
   withSupportedAttribution,
   type PublicSearchParams,
@@ -35,6 +36,7 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <div className="relative isolate flex min-h-dvh flex-col overflow-hidden">
+      <AttributionCapture landingPath="/" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_78%_22%,rgba(91,140,255,0.12),transparent_28%),radial-gradient(circle_at_12%_92%,rgba(163,74,50,0.08),transparent_28%)]" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-[15%] -z-10 hidden w-px bg-gradient-to-b from-transparent via-white/[0.07] to-transparent lg:block" />
       <div aria-hidden="true" className="pointer-events-none absolute top-[18%] right-[8%] -z-10 size-40 rounded-full border border-white/[0.055] sm:size-64 lg:size-80" />

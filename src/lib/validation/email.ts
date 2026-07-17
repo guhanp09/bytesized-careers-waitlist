@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { attributionSubmissionSchema } from '@/lib/attribution/campaign';
 
 /**
  * Email validation + normalization (plan §13).
@@ -37,12 +38,7 @@ export const emailStepSchema = z.object({
     .max(320, { message: 'That email address is too long.' }),
   // Honeypot: any non-empty value indicates a bot (checked in the action).
   honeypot: z.string().optional().default(''),
-  // First-touch attribution (all optional, bounded).
-  source: z.string().max(120).optional(),
-  utmSource: z.string().max(200).optional(),
-  utmMedium: z.string().max(200).optional(),
-  utmCampaign: z.string().max(200).optional(),
-  referrer: z.string().max(2048).optional(),
+  attribution: attributionSubmissionSchema.optional(),
 });
 
 /** Changing an address may omit a legacy/null name; an existing valid name is preserved. */

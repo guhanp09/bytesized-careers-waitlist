@@ -6,11 +6,17 @@ describe('early-access attribution links', () => {
     expect(
       withSupportedAttribution('/early-access', {
         utm_source: 'linkedin',
+        utm_medium: 'outbound',
         utm_campaign: 'launch',
-        source: 'invite',
+        utm_content: 'agency-dm-a',
+        utm_term: 'creator-hiring',
+        utm_geo: 'IN',
+        utm_placement: 'dm',
+        ref: 'partner-a',
+        source: 'legacy-is-not-forwarded',
         arbitrary: 'not-forwarded',
       }),
-    ).toBe('/early-access?source=invite&utm_source=linkedin&utm_campaign=launch');
+    ).toBe('/early-access?utm_source=linkedin&utm_medium=outbound&utm_campaign=launch&utm_content=agency-dm-a&utm_term=creator-hiring&utm_geo=in&utm_placement=dm&ref=partner-a');
   });
 
   it('ignores repeated extras, control characters, empty values, and oversized input', () => {
@@ -21,6 +27,6 @@ describe('early-access attribution links', () => {
         utm_campaign: 'x'.repeat(201),
         utm_source: '',
       }),
-    ).toBe('/early-access?ref=partner');
+    ).toBe('/early-access');
   });
 });

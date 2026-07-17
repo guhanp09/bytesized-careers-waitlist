@@ -48,21 +48,24 @@ test('root is a pre-launch brand holding page and never initializes registration
   await expect(page.locator('[data-waitlist-card]')).toHaveCount(0);
   expect(postRequests).toEqual([]);
   expect(await page.evaluate(() => localStorage.getItem('bytesized_waitlist_resume'))).toBeNull();
+  await expect.poll(() =>
+    page.evaluate(() => localStorage.getItem('bytesized_waitlist_attribution')),
+  ).not.toBeNull();
   expect(await localLeadCount()).toBe(before);
 });
 
 test('root CTA forwards only supported attribution into early access', async ({ page }) => {
   await page.goto(
-    '/?utm_source=linkedin&utm_campaign=launch&utm_medium=social&source=invite&unsafe=discard',
+    '/?utm_source=linkedin&utm_campaign=launch&utm_medium=outbound&utm_content=agency-dm-a&utm_term=creator-hiring&utm_geo=in&utm_placement=dm&ref=partner-a&source=discard&unsafe=discard',
   );
   const cta = page.getByRole('link', { name: 'Join early access' });
   await expect(cta).toHaveAttribute(
     'href',
-    '/early-access?source=invite&utm_source=linkedin&utm_medium=social&utm_campaign=launch',
+    '/early-access?utm_source=linkedin&utm_medium=outbound&utm_campaign=launch&utm_content=agency-dm-a&utm_term=creator-hiring&utm_geo=in&utm_placement=dm&ref=partner-a',
   );
   await cta.click();
   await expect(page).toHaveURL(
-    /\/early-access\?source=invite&utm_source=linkedin&utm_medium=social&utm_campaign=launch$/,
+    /\/early-access\?utm_source=linkedin&utm_medium=outbound&utm_campaign=launch&utm_content=agency-dm-a&utm_term=creator-hiring&utm_geo=in&utm_placement=dm&ref=partner-a$/,
   );
   await expect(page.locator('#email')).toBeVisible();
 });

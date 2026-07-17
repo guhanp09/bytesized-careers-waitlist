@@ -11,6 +11,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core';
 import type { NeedProfileV1 } from '@/types/lead-domain';
+import type { AttributionTouchV1 } from '@/lib/attribution/campaign';
 
 /**
  * ByteSized Careers — waitlist data model (§9 of the implementation plan).
@@ -224,7 +225,12 @@ export const waitlistLeads = pgTable(
     lastCompletedStep: integer('last_completed_step').notNull().default(1),
     lastMeaningfulStep: text('last_meaningful_step').notNull().default('email'),
 
-    // ── Attribution (first-touch, preserved on upsert) ──────────────────
+    // ── Attribution ────────────────────────────────────────────────────
+    // Structured records are authoritative for new writes. First touch is immutable;
+    // last touch changes only after a new explicit campaign/referral visit.
+    firstTouchAttribution: jsonb('first_touch_attribution').$type<AttributionTouchV1>(),
+    lastTouchAttribution: jsonb('last_touch_attribution').$type<AttributionTouchV1>(),
+    // Compatibility-only first-touch fields retained for historical rows.
     source: text('source'),
     utmSource: text('utm_source'),
     utmMedium: text('utm_medium'),

@@ -193,3 +193,6 @@ See [`docs/email-integration.md`](docs/email-integration.md) for local mock test
 
 See [`docs/lead-domain.md`](docs/lead-domain.md) for the current form-to-database field map,
 structured seeker/recruiter intent model, compatibility policy, and admin/export contract.
+
+See [`docs/campaign-attribution-guide.md`](docs/campaign-attribution-guide.md) for the supported
+campaign-link allowlist, first/last-touch rules, persistence model, reporting, and copyable URLs.

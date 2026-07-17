@@ -1,7 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-import { selectResumeState, type ResumeState } from '@/lib/db/queries/leads';
+import {
+  selectResumeState,
+  updateLeadLastTouch,
+  type ResumeState,
+} from '@/lib/db/queries/leads';
+import { attributionTouchSchema, type AttributionTouchV1 } from '@/lib/attribution/campaign';
 import { fieldErrorsOf } from '@/lib/validation/utils';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logger } from '@/lib/utils/logger';
@@ -10,11 +15,13 @@ import { actionOk, actionError, type ActionResult } from '@/types/waitlist';
 const resumeSchema = z.object({
   leadId: z.uuid(),
   resumeToken: z.string().min(1),
+  currentTouch: attributionTouchSchema.optional(),
 });
 
 export interface GetLeadForResumeInput {
   leadId: string;
   resumeToken: string;
+  currentTouch?: AttributionTouchV1;
 }
 
 /**
@@ -37,6 +44,16 @@ export async function getLeadForResume(
   }
 
   try {
+    if (parsed.data.currentTouch) {
+      const updated = await updateLeadLastTouch({
+        leadId: parsed.data.leadId,
+        resumeToken: parsed.data.resumeToken,
+        touch: parsed.data.currentTouch,
+      });
+      if (!updated.ok) {
+        return actionError('invalid_token', 'This session could not be resumed.');
+      }
+    }
     const state = await selectResumeState(parsed.data);
     if (!state) {
       return actionError('invalid_token', 'This session could not be resumed.');

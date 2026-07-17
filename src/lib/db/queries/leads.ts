@@ -17,15 +17,19 @@ import {
   PHONE_CONSENT_VERSION,
   type PhoneChannelChoices,
 } from '@/lib/consent/phone';
+import type {
+  AttributionSubmission,
+  AttributionTouchV1,
+} from '@/lib/attribution/campaign';
 
 /**
  * Idempotent upsert for Step 1 (plan §9). Keyed on the UNIQUE normalized_email, so
  * repeated/retried submissions UPDATE the existing row rather than creating a duplicate,
  * and the operation is atomic under concurrency by construction of the unique constraint.
  *
- * First-touch attribution is preserved: source / UTM / referrer are only filled if they
- * were previously null (coalesce existing, incoming). The resume token is rotated so a
- * returning visitor who lost their localStorage token can obtain a fresh, usable one.
+ * First-touch attribution is preserved exactly after creation. A new explicit visit may
+ * update only structured last touch. The resume token is rotated so a returning visitor
+ * who lost their localStorage token can obtain a fresh, usable one.
  */
 export interface UpsertLeadByEmailInput {
   fullName?: string | null;
@@ -38,24 +42,38 @@ export interface UpsertLeadByEmailInput {
   utmMedium?: string | undefined;
   utmCampaign?: string | undefined;
   referrer?: string | undefined;
+  attribution?: AttributionSubmission | undefined;
 }
 
 export async function upsertLeadByEmail(
   input: UpsertLeadByEmailInput,
-): Promise<{ id: string }> {
+): Promise<{
+  id: string;
+  firstTouchAttribution: AttributionTouchV1 | null;
+  lastTouchAttribution: AttributionTouchV1 | null;
+}> {
   const db = getDb();
   const normalizedFullName = input.fullName ? normalizeFullName(input.fullName) : null;
+  const firstTouch = input.attribution?.firstTouch;
+  const lastTouch = input.attribution?.lastTouch;
+  const currentTouch =
+    input.attribution?.currentTouch?.kind === 'direct'
+      ? undefined
+      : input.attribution?.currentTouch;
   const rows = await db
     .insert(waitlistLeads)
     .values({
       fullName: normalizedFullName || null,
       originalEmail: input.originalEmail,
       normalizedEmail: input.normalizedEmail,
-      source: input.source,
-      utmSource: input.utmSource,
-      utmMedium: input.utmMedium,
-      utmCampaign: input.utmCampaign,
-      referrer: input.referrer,
+      firstTouchAttribution: firstTouch,
+      lastTouchAttribution: lastTouch,
+      // Populate compatibility columns for new records; structured JSON remains canonical.
+      source: input.source ?? firstTouch?.referral,
+      utmSource: input.utmSource ?? (firstTouch?.kind === 'campaign' ? firstTouch.source : undefined),
+      utmMedium: input.utmMedium ?? (firstTouch?.kind === 'campaign' ? firstTouch.medium : undefined),
+      utmCampaign: input.utmCampaign ?? firstTouch?.campaign,
+      referrer: input.referrer ?? firstTouch?.referrerHost,
       resumeTokenHash: input.resumeTokenHash,
       resumeTokenExpiresAt: input.resumeTokenExpiresAt,
       completionStatus: 'email_only',
@@ -69,12 +87,22 @@ export async function upsertLeadByEmail(
         originalEmail: sql`excluded.original_email`,
         // A blank/legacy submission must never erase a captured name.
         fullName: sql`case when nullif(trim(excluded.full_name), '') is not null then excluded.full_name else ${waitlistLeads.fullName} end`,
-        // First-touch: keep the earliest known attribution.
-        source: sql`coalesce(${waitlistLeads.source}, excluded.source)`,
-        utmSource: sql`coalesce(${waitlistLeads.utmSource}, excluded.utm_source)`,
-        utmMedium: sql`coalesce(${waitlistLeads.utmMedium}, excluded.utm_medium)`,
-        utmCampaign: sql`coalesce(${waitlistLeads.utmCampaign}, excluded.utm_campaign)`,
-        referrer: sql`coalesce(${waitlistLeads.referrer}, excluded.referrer)`,
+        // Structured first touch is immutable after lead creation. Historical rows stay
+        // null rather than being retroactively guessed from a later visit.
+        firstTouchAttribution: waitlistLeads.firstTouchAttribution,
+        // Only a newly observed non-direct visit may change last touch.
+        ...(currentTouch
+          ? {
+              lastTouchAttribution: sql`${JSON.stringify(currentTouch)}::jsonb`,
+            }
+          : {}),
+        // Compatibility first-touch fields are equally immutable; never create a hybrid
+        // from a later campaign or backfill a historical row with guessed origins.
+        source: waitlistLeads.source,
+        utmSource: waitlistLeads.utmSource,
+        utmMedium: waitlistLeads.utmMedium,
+        utmCampaign: waitlistLeads.utmCampaign,
+        referrer: waitlistLeads.referrer,
         // Rotate the resume token so a returning visitor can continue.
         resumeTokenHash: sql`excluded.resume_token_hash`,
         resumeTokenExpiresAt: sql`excluded.resume_token_expires_at`,
@@ -83,7 +111,11 @@ export async function upsertLeadByEmail(
         updatedAt: sql`now()`,
       },
     })
-    .returning({ id: waitlistLeads.id });
+    .returning({
+      id: waitlistLeads.id,
+      firstTouchAttribution: waitlistLeads.firstTouchAttribution,
+      lastTouchAttribution: waitlistLeads.lastTouchAttribution,
+    });
 
   const row = rows[0];
   if (!row) {
@@ -146,6 +178,7 @@ type LeadSet = Record<
   | string[]
   | Record<string, string>
   | NeedProfileV1
+  | AttributionTouchV1
 >;
 
 async function updateLeadScoped(
@@ -167,6 +200,18 @@ async function updateLeadScoped(
     )
     .returning({ id: waitlistLeads.id });
   return { ok: rows.length > 0 };
+}
+
+/** Update only last touch for a token-authorized lead; first touch is never in this set. */
+export async function updateLeadLastTouch(input: {
+  leadId: string;
+  resumeToken: string;
+  touch: AttributionTouchV1;
+}): Promise<{ ok: boolean }> {
+  if (input.touch.kind === 'direct') return { ok: true };
+  return updateLeadScoped(input.leadId, input.resumeToken, {
+    lastTouchAttribution: input.touch,
+  });
 }
 
 /** Step 2 — save role; email_only -> partial; never regress lastCompletedStep. */
@@ -376,6 +421,8 @@ export interface ResumeState {
   emailVerified: boolean;
   phoneVerified: boolean;
   lastMeaningfulStep: string;
+  firstTouchAttribution: AttributionTouchV1 | null;
+  lastTouchAttribution: AttributionTouchV1 | null;
 }
 
 /**
@@ -422,6 +469,8 @@ export async function selectResumeState(input: {
       emailVerificationStatus: waitlistLeads.emailVerificationStatus,
       phoneVerificationStatus: waitlistLeads.phoneVerificationStatus,
       lastMeaningfulStep: waitlistLeads.lastMeaningfulStep,
+      firstTouchAttribution: waitlistLeads.firstTouchAttribution,
+      lastTouchAttribution: waitlistLeads.lastTouchAttribution,
     })
     .from(waitlistLeads)
     .where(
@@ -485,5 +534,7 @@ export async function selectResumeState(input: {
     emailVerified: row.emailVerificationStatus === 'verified',
     phoneVerified: row.phoneVerificationStatus === 'verified',
     lastMeaningfulStep: row.lastMeaningfulStep,
+    firstTouchAttribution: row.firstTouchAttribution,
+    lastTouchAttribution: row.lastTouchAttribution,
   };
 }

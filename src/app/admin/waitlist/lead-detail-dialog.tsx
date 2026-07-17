@@ -5,6 +5,7 @@ import type { AdminLeadRow } from '@/lib/db/queries/admin';
 import { displayNeedGroups, hasCustomResponse, needCount } from '@/lib/leads/needs';
 import { labelFor } from '@/lib/validation/constants';
 import { formatIstDateTime, readablePercent } from '@/lib/admin/time';
+import { legacyReferrerHostname, type AttributionTouchV1 } from '@/lib/attribution/campaign';
 
 interface LeadDetailDialogProps { lead: AdminLeadRow; onClose: () => void; }
 
@@ -90,6 +91,51 @@ function noteHeading(role: AdminLeadRow['role']) {
   return 'Anything you’d want us to know?';
 }
 
+function displaySource(value: string | null | undefined) {
+  if (!value) return 'Not provided';
+  return value === 'direct' ? 'Direct' : value;
+}
+
+function AttributionDetails({
+  title,
+  touch,
+  legacy,
+}: {
+  title: 'First touch' | 'Last touch';
+  touch: AttributionTouchV1 | null;
+  legacy?: Pick<AdminLeadRow, 'source' | 'utmSource' | 'utmMedium' | 'utmCampaign' | 'referrer'>;
+}) {
+  const hasLegacy = Boolean(
+    legacy && (legacy.source || legacy.utmSource || legacy.utmMedium || legacy.utmCampaign || legacy.referrer),
+  );
+  const source = touch?.source ?? legacy?.utmSource ?? legacy?.source;
+  const referrerHost = touch?.referrerHost ?? legacyReferrerHostname(legacy?.referrer);
+  const fallback = hasLegacy ? 'Legacy record' : 'Not provided';
+  return (
+    <div className="rounded-xl border border-[color:var(--color-line)] bg-surface/45 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-medium text-ink">{title}</h4>
+        <span className="text-[10px] font-semibold tracking-wide text-faint uppercase">
+          {touch ? touch.kind : hasLegacy ? 'legacy' : 'unknown'}
+        </span>
+      </div>
+      <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Field label="Source">{displaySource(source)}</Field>
+        <Field label="Medium">{touch?.medium ?? legacy?.utmMedium ?? fallback}</Field>
+        <Field label="Campaign">{touch?.campaign ?? legacy?.utmCampaign ?? fallback}</Field>
+        <Field label="Content">{touch?.content ?? fallback}</Field>
+        <Field label="Term">{touch?.term ?? fallback}</Field>
+        <Field label="Geography">{touch?.geo ?? fallback}</Field>
+        <Field label="Placement">{touch?.placement ?? fallback}</Field>
+        <Field label="Referral">{touch?.referral ?? fallback}</Field>
+        <Field label="Referrer host">{referrerHost ?? fallback}</Field>
+        <Field label="Landing page">{touch?.landingPath ?? fallback}</Field>
+        <Field label="Captured">{touch ? formatIstDateTime(new Date(touch.capturedAt)) : fallback}</Field>
+      </dl>
+    </div>
+  );
+}
+
 export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   useEffect(() => { const dialog = dialogRef.current; if (dialog && !dialog.open) dialog.showModal(); }, []);
@@ -99,7 +145,7 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
   const hasContext = lead.workFormats.length + lead.organisationTypes.length + lead.platforms.length + lead.niches.length > 0 || Boolean(lead.experienceLevel || lead.availabilityToStart || lead.portfolioUrl || lead.hiringTimeline || lead.teamSize || lead.companyUrl);
   const completionSignals = [true, Boolean(lead.role), needs > 0, hasContext, lead.completionStatus === 'completed'];
   const completeness = readablePercent(completionSignals.filter(Boolean).length, completionSignals.length);
-  const source = lead.utmSource ?? lead.source ?? 'Direct / Unknown';
+  const source = lead.firstTouchAttribution?.source ?? lead.utmSource ?? lead.source ?? 'Legacy / Unknown';
   const why = lead.role === 'seeker' ? 'Looking for creator-economy work' : lead.role === 'recruiter' ? 'Looking to hire creator-economy talent' : lead.role === 'both' ? 'Looking for work and hiring talent' : 'Intent has not been selected yet';
 
   return (
@@ -139,7 +185,7 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
             <Field label="Joined">{formatIstDateTime(lead.createdAt)}</Field>
             <Field label="Last updated">{formatIstDateTime(lead.updatedAt)}</Field>
             <Field label="Completed">{formatIstDateTime(lead.completedAt)}</Field>
-            <Field label="Source">{source}</Field>
+            <Field label="Source">{displaySource(source)}</Field>
             <Field label="Last meaningful step">{lead.lastMeaningfulStep.replaceAll('_', ' ')}</Field>
             <Field label="Profile signal">{needs} standardized need{needs === 1 ? '' : 's'}{custom ? ' + custom detail' : ''}</Field>
           </dl>
@@ -147,6 +193,20 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
 
         <Section title="Why they joined">
           <p className="rounded-xl border border-accent/20 bg-accent/[0.07] px-4 py-3 text-base font-medium text-ink">{why}</p>
+        </Section>
+
+        <Section
+          title="Campaign attribution"
+          description="First touch remains fixed; last touch changes only after a new explicit campaign or external referral."
+        >
+          <div className="grid gap-4">
+            <AttributionDetails
+              title="First touch"
+              touch={lead.firstTouchAttribution}
+              legacy={lead}
+            />
+            <AttributionDetails title="Last touch" touch={lead.lastTouchAttribution} />
+          </div>
         </Section>
 
         <Section title="Contact details" description="Contact values are shown only inside the authenticated admin area.">
@@ -205,11 +265,11 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
             <Field label="Completed">{formatIstDateTime(lead.completedAt)}</Field>
             <Field label="Last delivery state">{lead.lastTransactionalEmailStatus}</Field>
             <Field label="Last delivery event">{formatIstDateTime(lead.lastTransactionalEmailAt)}</Field>
-            <Field label="Raw source">{lead.source ?? 'Not recorded'}</Field>
-            <Field label="UTM source">{lead.utmSource ?? 'Not recorded'}</Field>
-            <Field label="UTM medium">{lead.utmMedium ?? 'Not recorded'}</Field>
-            <Field label="UTM campaign">{lead.utmCampaign ?? 'Not recorded'}</Field>
-            <Field label="Referrer">{lead.referrer ?? 'Not recorded'}</Field>
+            <Field label="Legacy source field">{lead.source ?? 'Not recorded'}</Field>
+            <Field label="Legacy UTM source">{lead.utmSource ?? 'Not recorded'}</Field>
+            <Field label="Legacy UTM medium">{lead.utmMedium ?? 'Not recorded'}</Field>
+            <Field label="Legacy UTM campaign">{lead.utmCampaign ?? 'Not recorded'}</Field>
+            <Field label="Legacy referrer host">{legacyReferrerHostname(lead.referrer) ?? 'Not recorded'}</Field>
             {lead.hiringFrequency ? <Field label="Legacy hiring frequency">{labelFor(lead.hiringFrequency)}</Field> : null}
             {lead.talentSeniority ? <Field label="Legacy talent seniority">{labelFor(lead.talentSeniority)}</Field> : null}
           </dl>

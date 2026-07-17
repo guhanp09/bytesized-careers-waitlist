@@ -53,7 +53,7 @@ export default async function AdminWaitlistPage({ searchParams }: PageProps) {
     const offset = (page - 1) * PAGE_SIZE;
     const [list, options] = await Promise.all([
       listLeads(filters, PAGE_SIZE, offset),
-      getAdminFilterOptions(),
+      getAdminFilterOptions(filters.attributionModel ?? 'first'),
     ]);
     const totalPages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
     const query = filtersToQuery(filters);
@@ -69,7 +69,12 @@ export default async function AdminWaitlistPage({ searchParams }: PageProps) {
           </div>
           <p className="text-sm tabular-nums text-muted">{list.total.toLocaleString()} matching lead{list.total === 1 ? '' : 's'}</p>
         </div>
-        <FilterBar filters={filters} sources={options.sources} campaigns={options.campaigns} />
+        <FilterBar
+          filters={filters}
+          sources={options.sources}
+          mediums={options.mediums}
+          campaigns={options.campaigns}
+        />
 
         <div className="mt-4 flex items-center justify-between text-xs text-faint">
           <p>Times shown in Asia/Kolkata (IST)</p>

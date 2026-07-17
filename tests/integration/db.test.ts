@@ -11,6 +11,7 @@ import {
   updateLeadContext,
   updateLeadNote,
   selectResumeState,
+  updateLeadLastTouch,
 } from '@/lib/db/queries/leads';
 import {
   getWaitlistSummary,
@@ -41,6 +42,7 @@ import {
   resumeTokenExpiry,
 } from '@/lib/tokens/lead-token';
 import { normalizeEmail } from '@/lib/validation/email';
+import type { AttributionTouchV1 } from '@/lib/attribution/campaign';
 
 const db = getDb();
 const RUN_ID = crypto.randomUUID().slice(0, 8);
@@ -72,6 +74,22 @@ async function createLead(
 async function getLead(id: string) {
   const rows = await db.select().from(waitlistLeads).where(eq(waitlistLeads.id, id));
   return rows[0]!;
+}
+
+function campaignTouch(
+  source: string,
+  campaign: string,
+  capturedAt: string,
+): AttributionTouchV1 {
+  return {
+    version: 1,
+    kind: 'campaign',
+    source,
+    medium: 'paid-social',
+    campaign,
+    landingPath: '/early-access',
+    capturedAt,
+  };
 }
 
 async function stageEmailCode(
@@ -128,6 +146,74 @@ describe('upsertLeadByEmail — idempotency', () => {
     await createLead('attrib@example.com', { utmSource: 'second' });
     const lead = await getLead(id);
     expect(lead.utmSource).toBe('first');
+  });
+
+  it('keeps structured first touch immutable and updates last touch only from current explicit attribution', async () => {
+    const scopedEmail = emailFor('structured-attrib@example.com');
+    const firstToken = generateResumeToken();
+    const reddit = campaignTouch('reddit', 'editor-feedback', '2026-07-17T09:00:00.000Z');
+    const first = await upsertLeadByEmail({
+      originalEmail: scopedEmail,
+      normalizedEmail: scopedEmail,
+      resumeTokenHash: hashResumeToken(firstToken),
+      resumeTokenExpiresAt: resumeTokenExpiry(),
+      attribution: { version: 1, firstTouch: reddit, lastTouch: reddit, currentTouch: reddit },
+    });
+
+    const meta = campaignTouch('meta', 'talent-india', '2026-07-17T10:00:00.000Z');
+    const secondToken = generateResumeToken();
+    const second = await upsertLeadByEmail({
+      originalEmail: scopedEmail,
+      normalizedEmail: scopedEmail,
+      resumeTokenHash: hashResumeToken(secondToken),
+      resumeTokenExpiresAt: resumeTokenExpiry(),
+      attribution: { version: 1, firstTouch: meta, lastTouch: meta, currentTouch: meta },
+    });
+    expect(second.id).toBe(first.id);
+
+    let lead = await getLead(first.id);
+    expect(lead.firstTouchAttribution).toEqual(reddit);
+    expect(lead.lastTouchAttribution).toEqual(meta);
+
+    const direct = {
+      version: 1 as const,
+      kind: 'direct' as const,
+      source: 'direct',
+      landingPath: '/early-access' as const,
+      capturedAt: '2026-07-17T11:00:00.000Z',
+    };
+    const thirdToken = generateResumeToken();
+    await upsertLeadByEmail({
+      originalEmail: scopedEmail,
+      normalizedEmail: scopedEmail,
+      resumeTokenHash: hashResumeToken(thirdToken),
+      resumeTokenExpiresAt: resumeTokenExpiry(),
+      attribution: { version: 1, firstTouch: direct, lastTouch: direct },
+    });
+    lead = await getLead(first.id);
+    expect(lead.firstTouchAttribution).toEqual(reddit);
+    expect(lead.lastTouchAttribution).toEqual(meta);
+
+    const linkedin = campaignTouch('linkedin', 'hirer-outbound', '2026-07-17T12:00:00.000Z');
+    expect(
+      await updateLeadLastTouch({ leadId: first.id, resumeToken: thirdToken, touch: linkedin }),
+    ).toEqual({ ok: true });
+    lead = await getLead(first.id);
+    expect(lead.firstTouchAttribution).toEqual(reddit);
+    expect(lead.lastTouchAttribution).toEqual(linkedin);
+
+    await stageEmailCode(first.id, thirdToken, '456789');
+    expect(await verifyEmailCode(first.id, thirdToken, '456789')).toBe('verified');
+    lead = await getLead(first.id);
+    expect(lead.firstTouchAttribution).toEqual(reddit);
+    expect(lead.lastTouchAttribution).toEqual(linkedin);
+  });
+
+  it('keeps historical rows valid with null structured attribution', async () => {
+    const { id } = await createLead('legacy-attribution@example.com');
+    const lead = await getLead(id);
+    expect(lead.firstTouchAttribution).toBeNull();
+    expect(lead.lastTouchAttribution).toBeNull();
   });
 
   it('stores new leads as unverified and email_only', async () => {
@@ -440,8 +526,19 @@ describe('admin queries', () => {
     const beforeSources = counts(before.sources);
     const afterSources = counts(after.sources);
     expect((afterSources.twitter ?? 0) - (beforeSources.twitter ?? 0)).toBe(2);
+    const performance = (rows: { source: string; savedEmailCount: number }[]) =>
+      Object.fromEntries(rows.map((row) => [row.source, row.savedEmailCount]));
+    const beforeFirstPerformance = performance(before.firstTouchPerformance);
+    const afterFirstPerformance = performance(after.firstTouchPerformance);
+    expect((afterFirstPerformance.twitter ?? 0) - (beforeFirstPerformance.twitter ?? 0)).toBe(2);
+    const beforeLastPerformance = performance(before.lastTouchPerformance);
+    const afterLastPerformance = performance(after.lastTouchPerformance);
+    expect(
+      (afterLastPerformance['Legacy / Unknown'] ?? 0) -
+        (beforeLastPerformance['Legacy / Unknown'] ?? 0),
+    ).toBe(3);
     expect(after.trend.reduce((sum, row) => sum + row.total, 0) - before.trend.reduce((sum, row) => sum + row.total, 0)).toBe(3);
-  });
+  }, 15_000);
 
   it('need breakdowns keep seeker and recruiter selections separate', async () => {
     const beforeSeeker = Object.fromEntries((await getNeedBreakdown('seeker')).map((r) => [r.key, r.count]));
@@ -522,6 +619,38 @@ describe('admin queries', () => {
 
     const absentPhone = await listLeads({ phonePresent: false, q: RUN_ID });
     expect(absentPhone.total).toBe(2);
+  });
+
+  it('filters structured first and last touch without confusing the two models', async () => {
+    const scopedEmail = emailFor('attribution-filter@example.com');
+    const token = generateResumeToken();
+    const reddit = campaignTouch('reddit', 'community-feedback', '2026-07-17T09:00:00.000Z');
+    const meta = campaignTouch('meta', 'paid-talent', '2026-07-17T10:00:00.000Z');
+    const { id } = await upsertLeadByEmail({
+      originalEmail: scopedEmail,
+      normalizedEmail: scopedEmail,
+      resumeTokenHash: hashResumeToken(token),
+      resumeTokenExpiresAt: resumeTokenExpiry(),
+      attribution: { version: 1, firstTouch: reddit, lastTouch: reddit, currentTouch: reddit },
+    });
+    await updateLeadLastTouch({ leadId: id, resumeToken: token, touch: meta });
+
+    const first = await listLeads({
+      attributionModel: 'first',
+      source: 'reddit',
+      medium: 'paid-social',
+      utmCampaign: 'community-feedback',
+    });
+    const last = await listLeads({
+      attributionModel: 'last',
+      source: 'meta',
+      medium: 'paid-social',
+      utmCampaign: 'paid-talent',
+    });
+    const wrongModel = await listLeads({ attributionModel: 'first', source: 'meta' });
+    expect(first.rows.some((row) => row.id === id)).toBe(true);
+    expect(last.rows.some((row) => row.id === id)).toBe(true);
+    expect(wrongModel.rows.some((row) => row.id === id)).toBe(false);
   });
 
   it('CSV export reflects filters and includes verification status', async () => {

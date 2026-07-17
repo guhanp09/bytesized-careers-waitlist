@@ -21,11 +21,7 @@ export interface SubmitEmailInput {
   fullName: string;
   email: string;
   honeypot?: string;
-  source?: string;
-  utmSource?: string;
-  utmMedium?: string;
-  utmCampaign?: string;
-  referrer?: string;
+  attribution?: import('@/lib/attribution/campaign').AttributionSubmission;
 }
 
 export type SubmitEmailData = {
@@ -33,6 +29,7 @@ export type SubmitEmailData = {
   resumeToken: string;
   emailMasked: string;
   fullName: string | null;
+  attribution?: import('@/lib/attribution/campaign').AttributionStateV1;
 };
 
 export interface ChangeEmailInput extends Omit<SubmitEmailInput, 'fullName'> {
@@ -61,8 +58,7 @@ export async function submitEmailStep(
     );
   }
 
-  const { fullName, email, honeypot, source, utmSource, utmMedium, utmCampaign, referrer } =
-    parsed.data;
+  const { fullName, email, honeypot, attribution } = parsed.data;
 
   // Honeypot: a real hidden field that humans never fill. Non-empty => bot.
   if (honeypot && honeypot.trim() !== '') {
@@ -84,17 +80,13 @@ export async function submitEmailStep(
   const resumeToken = generateResumeToken();
 
   try {
-    const { id } = await upsertLeadByEmail({
+    const { id, firstTouchAttribution, lastTouchAttribution } = await upsertLeadByEmail({
       fullName,
       originalEmail: email.trim(),
       normalizedEmail,
       resumeTokenHash: hashResumeToken(resumeToken),
       resumeTokenExpiresAt: resumeTokenExpiry(),
-      source,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-      referrer,
+      attribution,
     });
 
     logger.info({
@@ -109,6 +101,15 @@ export async function submitEmailStep(
       resumeToken,
       emailMasked: maskEmail(normalizedEmail),
       fullName,
+      ...(firstTouchAttribution && lastTouchAttribution
+        ? {
+            attribution: {
+              version: 1 as const,
+              firstTouch: firstTouchAttribution,
+              lastTouch: lastTouchAttribution,
+            },
+          }
+        : {}),
     });
   } catch (err) {
     logger.error({

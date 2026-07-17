@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         <p>The site also records or processes:</p>
         <ul>
           <li>registration, completion, verification, and update timestamps and status;</li>
-          <li>first-touch source, referral, UTM campaign parameters, and browser referrer when available;</li>
+          <li>first-touch and last-touch campaign source, medium, campaign, content, term, geography, placement, referral code, external referrer hostname, landing page, capture time, and attribution version when available;</li>
           <li>a request IP address transiently for abuse prevention; the application stores a peppered hash in a ten-minute rate-limit bucket rather than the raw IP address;</li>
           <li>request and error information in hosting logs, which may include ordinary network and device metadata handled by the hosting provider;</li>
           <li>an opaque lead identifier and a cryptographically random resume credential in local browser storage; and</li>
@@ -147,7 +147,8 @@ export default function PrivacyPage() {
           <li>after suitable functionality exists, to identify and notify you about potentially relevant talent, recruiter requirements, opportunities or marketplace activity;</li>
           <li>to respond to requests and maintain accurate records;</li>
           <li>to secure the service, rate-limit abuse, diagnose failures, and protect users and infrastructure; and</li>
-          <li>to understand which campaign or referral first brought a registration to the site.</li>
+          <li>to understand which outreach, campaign, community, partnership, or referral first brought a registration and which explicit source most recently preceded completion;</li>
+          <li>to measure saved, verified, and completed registrations by campaign and improve early-access promotion without advertising pixels or behavioural profiles.</li>
         </ul>
         <p>
           No current feature uses the information to make a solely automated decision with legal or similarly
@@ -171,11 +172,18 @@ export default function PrivacyPage() {
 
       <LegalSection number="08" title="Browser storage and cookies">
         <p>
-          The public flow uses one first-party localStorage record,{' '}
+          The public flow uses two first-party localStorage records.{' '}
           <code className="break-all text-ink">bytesized_waitlist_resume</code>, containing an opaque lead ID, a raw
           resume credential, and a saved-at time. It lets the same browser restore saved answers. The server stores
           only a one-way hash of that credential and rejects it after 30 days; an invalid record is cleared when the
           site next checks it. The browser copy otherwise remains until it is cleared by the flow, the user, or browser controls.
+        </p>
+        <p>
+          <code className="break-all text-ink">bytesized_waitlist_attribution</code> contains only the accepted campaign
+          and referral fields, external referrer hostname, landing path, capture time, and attribution version. It has
+          no email, phone, resume credential, advertising click ID, or cross-site identifier. It preserves first and
+          last touch across the requested registration journey and remains until replaced by valid campaign data or
+          cleared through browser controls. Once a lead exists, the server-side lead record is authoritative.
         </p>
         <p>
           Restricted admin pages use first-party Auth.js session, CSRF, callback, and short-lived OAuth security

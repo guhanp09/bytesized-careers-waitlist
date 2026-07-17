@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type {
   AdminLeadRow,
+  AttributionPerformanceRow,
   CountWithPercent,
   DashboardAnalytics,
   WaitlistSummary,
@@ -39,19 +40,33 @@ function DemandTable({ rows }: { rows: CountWithPercent[] }) {
   );
 }
 
-function AttributionTable({ title, rows }: { title: string; rows: CountWithPercent[] }) {
+function AttributionPerformanceTable({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: AttributionPerformanceRow[];
+}) {
   return (
-    <Panel title={title} description="Completion is shown against each source or campaign cohort.">
+    <Panel title={title} description="Saved emails are the cohort denominator; verification and completion remain separate outcomes.">
       {rows.length === 0 ? <p className="admin-empty">No attribution data yet.</p> : (
         <div className="overflow-x-auto">
           <table className="admin-data-table w-full">
-            <thead><tr><th>{title === 'Source performance' ? 'Source' : 'Campaign'}</th><th>Leads</th><th>Share</th><th>Completed</th><th>Conversion</th></tr></thead>
+            <thead><tr><th>Source</th><th>Medium</th><th>Campaign</th><th>Saved email</th><th>Verified</th><th>Verification rate</th><th>Completed</th><th>Completion rate</th><th>Talent</th><th>Hirer</th><th>Both</th></tr></thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.key}>
-                  <td className="font-medium text-ink">{row.key}</td>
-                  <td>{row.count}</td><td>{row.percentage}%</td><td>{row.completed ?? 0}</td>
-                  <td>{readablePercent(row.completed ?? 0, row.count)}%</td>
+                <tr key={`${row.source}\n${row.medium}\n${row.campaign}`}>
+                  <td className="font-medium text-ink">{row.source === 'direct' ? 'Direct' : row.source}</td>
+                  <td>{row.medium}</td>
+                  <td>{row.campaign}</td>
+                  <td>{row.savedEmailCount}</td>
+                  <td>{row.verifiedCount}</td>
+                  <td>{row.savedEmailCount ? `${readablePercent(row.verifiedCount, row.savedEmailCount)}%` : '—'}</td>
+                  <td>{row.completedCount}</td>
+                  <td>{row.savedEmailCount ? `${readablePercent(row.completedCount, row.savedEmailCount)}%` : '—'}</td>
+                  <td>{row.seekerCount}</td>
+                  <td>{row.recruiterCount}</td>
+                  <td>{row.bothCount}</td>
                 </tr>
               ))}
             </tbody>
@@ -145,10 +160,8 @@ export function OverviewDashboard({
         </Panel>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <AttributionTable title="Source performance" rows={analytics.sources} />
-        <AttributionTable title="Campaign performance" rows={analytics.campaigns} />
-      </div>
+      <AttributionPerformanceTable title="First-touch source performance" rows={analytics.firstTouchPerformance} />
+      <AttributionPerformanceTable title="Last-touch source performance" rows={analytics.lastTouchPerformance} />
 
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Panel

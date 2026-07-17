@@ -11,6 +11,7 @@ import { MatchInterlude } from '@/components/landing/match-interlude';
 import { Reveal } from '@/components/landing/reveal';
 import { LockIcon } from '@/components/ui/icons';
 import { COLOPHON } from '@/lib/copy/flow-copy';
+import { AttributionCapture } from '@/components/attribution/attribution-capture';
 
 export const metadata: Metadata = {
   title: 'Join Early Access | ByteSized Careers',
@@ -41,6 +42,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <BriefProvider>
+      <AttributionCapture landingPath="/early-access" />
       {/* No overflow-hidden here: it would become the sticky rail's containing scroller
           and defeat position:sticky. The scraps layer clips itself. */}
       <div className="relative isolate min-h-dvh">

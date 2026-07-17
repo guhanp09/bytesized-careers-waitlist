@@ -26,6 +26,9 @@ import {
 } from '@/lib/admin/time';
 import type { NeedProfileV1 } from '@/types/lead-domain';
 import type { Role, CompletionStatus } from '@/types/waitlist';
+import type { AttributionTouchV1 } from '@/lib/attribution/campaign';
+
+export type AttributionModel = 'first' | 'last';
 
 /** Filters shared by the admin list and CSV export. */
 export interface LeadFilters {
@@ -42,7 +45,9 @@ export interface LeadFilters {
   hasCustomResponse?: boolean;
   hasAdditionalContext?: boolean;
   source?: string;
+  medium?: string;
   utmCampaign?: string;
+  attributionModel?: AttributionModel;
   dateFrom?: string;
   dateTo?: string;
   updatedFrom?: string;
@@ -62,8 +67,35 @@ function hasCustom(column: SQLWrapper): SQL {
   )`;
 }
 
+function attributionValue(
+  model: AttributionModel,
+  field: 'source' | 'medium' | 'campaign',
+): SQL<string> {
+  const structured =
+    model === 'first'
+      ? waitlistLeads.firstTouchAttribution
+      : waitlistLeads.lastTouchAttribution;
+  if (model === 'first' && field === 'source') {
+    return sql`coalesce(nullif(trim(${structured}->>'source'), ''), nullif(trim(${waitlistLeads.utmSource}), ''), nullif(trim(${waitlistLeads.source}), ''), 'Legacy / Unknown')`;
+  }
+  if (model === 'first' && field === 'medium') {
+    return sql`coalesce(nullif(trim(${structured}->>'medium'), ''), nullif(trim(${waitlistLeads.utmMedium}), ''), 'Not provided')`;
+  }
+  if (model === 'first' && field === 'campaign') {
+    return sql`coalesce(nullif(trim(${structured}->>'campaign'), ''), nullif(trim(${waitlistLeads.utmCampaign}), ''), 'Not provided')`;
+  }
+  if (field === 'source') {
+    return sql`coalesce(nullif(trim(${structured}->>'source'), ''), 'Legacy / Unknown')`;
+  }
+  if (field === 'medium') {
+    return sql`coalesce(nullif(trim(${structured}->>'medium'), ''), 'Not provided')`;
+  }
+  return sql`coalesce(nullif(trim(${structured}->>'campaign'), ''), 'Not provided')`;
+}
+
 function buildWhere(filters: LeadFilters): SQL | undefined {
   const conditions: SQL[] = [];
+  const attributionModel = filters.attributionModel ?? 'first';
 
   if (filters.role) conditions.push(eq(waitlistLeads.role, filters.role));
   if (filters.completion) {
@@ -128,12 +160,13 @@ function buildWhere(filters: LeadFilters): SQL | undefined {
     conditions.push(filters.hasAdditionalContext ? present : sql`not (${present})`);
   }
   if (filters.source) {
-    conditions.push(
-      sql`coalesce(nullif(trim(${waitlistLeads.utmSource}), ''), nullif(trim(${waitlistLeads.source}), ''), 'Direct / Unknown') = ${filters.source}`,
-    );
+    conditions.push(sql`${attributionValue(attributionModel, 'source')} = ${filters.source}`);
+  }
+  if (filters.medium) {
+    conditions.push(sql`${attributionValue(attributionModel, 'medium')} = ${filters.medium}`);
   }
   if (filters.utmCampaign) {
-    conditions.push(eq(waitlistLeads.utmCampaign, filters.utmCampaign));
+    conditions.push(sql`${attributionValue(attributionModel, 'campaign')} = ${filters.utmCampaign}`);
   }
   if (filters.dateFrom) {
     conditions.push(gte(waitlistLeads.createdAt, istStartOfDay(filters.dateFrom)));
@@ -258,7 +291,7 @@ export async function getNeedBreakdown(side: 'seeker' | 'recruiter'): Promise<Br
 export async function getSourceBreakdown(): Promise<Breakdown[]> {
   const db = getDb();
   const rows = await db.execute<{ key: string; count: number }>(sql`
-    select coalesce(nullif(trim(${waitlistLeads.utmSource}), ''), nullif(trim(${waitlistLeads.source}), ''), 'Direct / Unknown') as key,
+    select ${attributionValue('first', 'source')} as key,
            cast(count(*) as int) as count
     from ${waitlistLeads}
     group by 1
@@ -325,6 +358,8 @@ export interface AdminLeadRow {
   utmMedium: string | null;
   utmCampaign: string | null;
   referrer: string | null;
+  firstTouchAttribution: AttributionTouchV1 | null;
+  lastTouchAttribution: AttributionTouchV1 | null;
   createdAt: Date;
   updatedAt: Date;
   completedAt: Date | null;
@@ -384,6 +419,8 @@ const LEAD_COLUMNS = {
   utmMedium: waitlistLeads.utmMedium,
   utmCampaign: waitlistLeads.utmCampaign,
   referrer: waitlistLeads.referrer,
+  firstTouchAttribution: waitlistLeads.firstTouchAttribution,
+  lastTouchAttribution: waitlistLeads.lastTouchAttribution,
   createdAt: waitlistLeads.createdAt,
   updatedAt: waitlistLeads.updatedAt,
   completedAt: waitlistLeads.completedAt,
@@ -500,6 +537,18 @@ export interface RecentComment {
   completedAt: Date | null;
 }
 
+export interface AttributionPerformanceRow {
+  source: string;
+  medium: string;
+  campaign: string;
+  savedEmailCount: number;
+  verifiedCount: number;
+  completedCount: number;
+  seekerCount: number;
+  recruiterCount: number;
+  bothCount: number;
+}
+
 export interface DashboardAnalytics {
   trend: TrendPoint[];
   trendPeriod: TrendPeriod;
@@ -514,11 +563,66 @@ export interface DashboardAnalytics {
   recruiterSelections: CountWithPercent[];
   sources: CountWithPercent[];
   campaigns: CountWithPercent[];
+  firstTouchPerformance: AttributionPerformanceRow[];
+  lastTouchPerformance: AttributionPerformanceRow[];
   recentComments: RecentComment[];
 }
 
 function numberOf(value: unknown): number {
   return typeof value === 'number' ? value : Number(value ?? 0);
+}
+
+export async function getAttributionPerformance(
+  model: AttributionModel,
+): Promise<AttributionPerformanceRow[]> {
+  const source = attributionValue(model, 'source');
+  const medium = attributionValue(model, 'medium');
+  const campaign = attributionValue(model, 'campaign');
+  const result = await getDb().execute<{
+    source: string;
+    medium: string;
+    campaign: string;
+    saved_email_count: number;
+    verified_count: number;
+    completed_count: number;
+    seeker_count: number;
+    recruiter_count: number;
+    both_count: number;
+  }>(sql`
+    select ${source} as source,
+           ${medium} as medium,
+           ${campaign} as campaign,
+           cast(count(*) as int) as saved_email_count,
+           cast(count(*) filter (where ${waitlistLeads.emailVerificationStatus} = 'verified') as int) as verified_count,
+           cast(count(*) filter (where ${waitlistLeads.completionStatus} = 'completed') as int) as completed_count,
+           cast(count(*) filter (where ${waitlistLeads.role} = 'seeker') as int) as seeker_count,
+           cast(count(*) filter (where ${waitlistLeads.role} = 'recruiter') as int) as recruiter_count,
+           cast(count(*) filter (where ${waitlistLeads.role} = 'both') as int) as both_count
+    from ${waitlistLeads}
+    group by 1, 2, 3
+    order by saved_email_count desc, source asc, medium asc, campaign asc
+  `);
+  return normalizeRows<{
+    source: string;
+    medium: string;
+    campaign: string;
+    saved_email_count: number;
+    verified_count: number;
+    completed_count: number;
+    seeker_count: number;
+    recruiter_count: number;
+    both_count: number;
+  }>(result).map((row) => ({
+    source: row.source,
+    medium: row.medium,
+    campaign: row.campaign,
+    savedEmailCount: numberOf(row.saved_email_count),
+    verifiedCount: numberOf(row.verified_count),
+    completedCount: numberOf(row.completed_count),
+    seekerCount: numberOf(row.seeker_count),
+    recruiterCount: numberOf(row.recruiter_count),
+    bothCount: numberOf(row.both_count),
+  }));
 }
 
 export function withPercent<T extends { key: string; count: number }>(
@@ -563,6 +667,8 @@ export async function getDashboardAnalytics(
     recruiterSelectionResult,
     sourceResult,
     campaignResult,
+    firstTouchPerformance,
+    lastTouchPerformance,
     commentRows,
   ] = await Promise.all([
     db.execute<{ date: string; total: number; completed: number; verified: number }>(sql`
@@ -638,19 +744,21 @@ export async function getDashboardAnalytics(
       group by selection order by count desc, selection asc limit 12
     `),
     db.execute<{ key: string; count: number; completed: number }>(sql`
-      select coalesce(nullif(trim(${waitlistLeads.utmSource}), ''), nullif(trim(${waitlistLeads.source}), ''), 'Direct / Unknown') as key,
+      select ${attributionValue('first', 'source')} as key,
              cast(count(*) as int) as count,
              cast(count(*) filter (where ${waitlistLeads.completionStatus} = 'completed') as int) as completed
       from ${waitlistLeads}
       group by 1 order by count desc, key asc limit 12
     `),
     db.execute<{ key: string; count: number; completed: number }>(sql`
-      select coalesce(nullif(trim(${waitlistLeads.utmCampaign}), ''), 'No campaign') as key,
+      select ${attributionValue('first', 'campaign')} as key,
              cast(count(*) as int) as count,
              cast(count(*) filter (where ${waitlistLeads.completionStatus} = 'completed') as int) as completed
       from ${waitlistLeads}
       group by 1 order by count desc, key asc limit 10
     `),
+    getAttributionPerformance('first'),
+    getAttributionPerformance('last'),
     db.select({
       id: waitlistLeads.id,
       fullName: waitlistLeads.fullName,
@@ -731,26 +839,35 @@ export async function getDashboardAnalytics(
     recruiterSelections: withPercent(normalizeCountRows(recruiterSelectionResult), recruiterRelevant),
     sources: withPercent(sources, total),
     campaigns: withPercent(campaigns, total),
+    firstTouchPerformance,
+    lastTouchPerformance,
     recentComments: commentRows
       .filter((row): row is typeof row & { comment: string } => Boolean(row.comment))
       .map((row) => ({ ...row, comment: row.comment })),
   };
 }
 
-export async function getAdminFilterOptions(): Promise<{ sources: string[]; campaigns: string[] }> {
+export async function getAdminFilterOptions(
+  model: AttributionModel = 'first',
+): Promise<{ sources: string[]; mediums: string[]; campaigns: string[] }> {
   const db = getDb();
-  const [sourceRows, campaignRows] = await Promise.all([
+  const [sourceRows, mediumRows, campaignRows] = await Promise.all([
     db.execute<{ value: string }>(sql`
-      select distinct coalesce(nullif(trim(${waitlistLeads.utmSource}), ''), nullif(trim(${waitlistLeads.source}), ''), 'Direct / Unknown') as value
+      select distinct ${attributionValue(model, 'source')} as value
       from ${waitlistLeads} order by 1
     `),
     db.execute<{ value: string }>(sql`
-      select distinct ${waitlistLeads.utmCampaign} as value from ${waitlistLeads}
-      where nullif(trim(${waitlistLeads.utmCampaign}), '') is not null order by 1
+      select distinct ${attributionValue(model, 'medium')} as value
+      from ${waitlistLeads} order by 1
+    `),
+    db.execute<{ value: string }>(sql`
+      select distinct ${attributionValue(model, 'campaign')} as value
+      from ${waitlistLeads} order by 1
     `),
   ]);
   return {
     sources: normalizeRows<{ value: string }>(sourceRows).map((row) => row.value),
+    mediums: normalizeRows<{ value: string }>(mediumRows).map((row) => row.value),
     campaigns: normalizeRows<{ value: string }>(campaignRows).map((row) => row.value),
   };
 }

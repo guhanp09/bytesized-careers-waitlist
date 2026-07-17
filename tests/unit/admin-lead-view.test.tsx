@@ -69,6 +69,8 @@ function lead(overrides: Partial<AdminLeadRow> = {}): AdminLeadRow {
     updatedAt: new Date('2026-07-15T10:00:00Z'),
     completedAt: new Date('2026-07-15T10:00:00Z'),
     ...overrides,
+    firstTouchAttribution: overrides.firstTouchAttribution ?? null,
+    lastTouchAttribution: overrides.lastTouchAttribution ?? null,
     fullName: overrides.fullName === undefined ? 'Asha Kapoor' : overrides.fullName,
   };
 }
@@ -102,6 +104,39 @@ describe('admin lead presentation', () => {
     expect(screen.getByText('Not opted in')).toBeInTheDocument();
     expect(screen.getByText('waitlist_phone_step')).toBeInTheDocument();
     expect(screen.queryByText(/token|hash|provider message/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps first-touch and last-touch attribution explicitly separated', async () => {
+    const user = userEvent.setup();
+    render(<WaitlistTable rows={[lead({
+      firstTouchAttribution: {
+        version: 1,
+        kind: 'campaign',
+        source: 'reddit',
+        medium: 'community',
+        campaign: 'editor-feedback',
+        content: 'community-post-a',
+        landingPath: '/',
+        capturedAt: '2026-07-15T08:00:00.000Z',
+      },
+      lastTouchAttribution: {
+        version: 1,
+        kind: 'campaign',
+        source: 'meta',
+        medium: 'paid-social',
+        campaign: 'talent-india',
+        placement: 'ig-reels',
+        landingPath: '/early-access',
+        capturedAt: '2026-07-15T09:00:00.000Z',
+      },
+    })]} />);
+    await user.click(screen.getAllByRole('button', { name: 'View' })[0]!);
+    expect(screen.getByText('Campaign attribution')).toBeInTheDocument();
+    expect(screen.getByText('First touch')).toBeInTheDocument();
+    expect(screen.getByText('Last touch')).toBeInTheDocument();
+    expect(screen.getByText('editor-feedback')).toBeInTheDocument();
+    expect(screen.getByText('talent-india')).toBeInTheDocument();
+    expect(screen.getByText('ig-reels')).toBeInTheDocument();
   });
 
   it('shows a partial-completion warning independently of verification', () => {

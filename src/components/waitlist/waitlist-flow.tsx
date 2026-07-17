@@ -18,6 +18,10 @@ import type { SubmitEmailData } from '@/lib/actions/submit-email';
 import { getLeadForResume } from '@/lib/actions/resume-lead';
 import { requestEmailCode, submitEmailCode } from '@/lib/actions/verify-email';
 import { saveResume, loadResume, clearResume } from '@/lib/utils/resume-storage';
+import {
+  captureAttribution,
+  replaceStoredAttribution,
+} from '@/lib/utils/attribution-storage';
 import { ACT_LABELS, ACT_NAMES } from '@/lib/copy/flow-copy';
 import type { Role } from '@/types/waitlist';
 
@@ -157,10 +161,15 @@ export function WaitlistFlow() {
   }, [data, setBriefSnapshot]);
 
   useEffect(() => {
+    const attribution = captureAttribution('/early-access');
     const record = loadResume();
     if (!record) return;
     let cancelled = false;
-    void getLeadForResume({ leadId: record.leadId, resumeToken: record.resumeToken }).then(
+    void getLeadForResume({
+      leadId: record.leadId,
+      resumeToken: record.resumeToken,
+      ...(attribution?.currentTouch ? { currentTouch: attribution.currentTouch } : {}),
+    }).then(
       (result) => {
         if (cancelled) return;
         if (!result.ok) {
@@ -168,6 +177,13 @@ export function WaitlistFlow() {
           return;
         }
         const s = result.data;
+        if (s.firstTouchAttribution && s.lastTouchAttribution) {
+          replaceStoredAttribution({
+            version: 1,
+            firstTouch: s.firstTouchAttribution,
+            lastTouch: s.lastTouchAttribution,
+          });
+        }
         setData((prev) => ({
           ...prev,
           leadId: record.leadId,
@@ -218,6 +234,7 @@ export function WaitlistFlow() {
       emailMasked: result.emailMasked,
     });
     saveResume({ leadId: result.leadId, resumeToken: result.resumeToken });
+    if (result.attribution) replaceStoredAttribution(result.attribution);
     navigate(2);
   }
 
