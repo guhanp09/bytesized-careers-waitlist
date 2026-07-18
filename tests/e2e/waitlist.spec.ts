@@ -55,6 +55,9 @@ test('completes the full v2 flow with mock email and validated phone capture', a
 
   // Phone — channel choices stay hidden until the number is valid and start unchecked.
   await page.getByRole('heading', { name: /Add a phone contact/ }).waitFor();
+  await expect(page.getByRole('heading', { name: 'Add a phone contact', exact: true })).toBeVisible();
+  await expect(page.getByText('Add your number for early access updates and relevant work or hiring leads', { exact: true })).toBeVisible();
+  await expect(page.getByText('No code is sent. A number by itself never opts you into WhatsApp, SMS, or calls.', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: 'WhatsApp' })).toHaveCount(0);
   await page.selectOption('#country', 'GB');
   // A malformed number is rejected with a clear validation error…

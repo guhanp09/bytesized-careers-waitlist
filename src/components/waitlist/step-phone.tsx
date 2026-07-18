@@ -157,10 +157,10 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
         </span>
         <div>
           <h2 data-step-heading tabIndex={-1} className="font-serif text-2xl tracking-tight text-ink">
-            Add a phone contact — optional
+            Add a phone contact
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Save a number and choose exactly how ByteSized may contact you in the future.
+            Add your number for early access updates and relevant work or hiring leads
           </p>
         </div>
       </div>
@@ -223,19 +223,13 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
               }
             }}
             aria-invalid={hasError}
-            aria-describedby={hasError ? 'phone-error' : 'phone-help'}
+            aria-describedby={hasError ? 'phone-error' : undefined}
             disabled={busy}
             className={cn(formControlClassName, 'min-h-13 shrink-0 rounded-xl sm:min-w-0 sm:flex-1')}
           />
         </div>
 
-        {hasError ? (
-          <p id="phone-error" role="alert" className="text-sm text-error">{error}</p>
-        ) : (
-          <p id="phone-help" className="text-sm text-faint">
-            No code is sent. A number by itself never opts you into WhatsApp, SMS, or calls.
-          </p>
-        )}
+        {hasError ? <p id="phone-error" role="alert" className="text-sm text-error">{error}</p> : null}
       </div>
 
       <AnimatePresence initial={false}>
