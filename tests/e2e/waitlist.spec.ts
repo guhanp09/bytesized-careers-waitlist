@@ -67,6 +67,7 @@ test('completes the full v2 flow with mock email and validated phone capture', a
   // …then a plausible one is normalized and saved — validate + save, never verify.
   await page.fill('#phone', '7400123456');
   await expect(page.getByRole('group', { name: 'How may we reach you?' })).toBeVisible();
+  await expect(page.getByText('Optional. Select any channels you want. Matching and phone outreach are not active today.', { exact: true })).toHaveCount(0);
   const whatsapp = page.getByRole('checkbox', { name: 'WhatsApp' });
   const sms = page.getByRole('checkbox', { name: 'SMS' });
   const calls = page.getByRole('checkbox', { name: 'Phone calls' });

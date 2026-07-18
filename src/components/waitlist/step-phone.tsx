@@ -243,9 +243,6 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
             className="min-w-0 overflow-hidden"
           >
             <legend className="font-serif text-lg tracking-tight text-ink">How may we reach you?</legend>
-            <p id="phone-channel-help" className="mt-1 text-sm leading-relaxed text-muted">
-              Optional. Select any channels you want. Matching and phone outreach are not active today.
-            </p>
             <div className="mt-3 grid gap-2.5">
               {CHANNELS.map(({ key, label, detail, icon: Icon }) => (
                 <label
@@ -259,7 +256,6 @@ export function StepPhone({ leadId, resumeToken, initialValue, onComplete }: Ste
                       checked={choices[key]}
                       onChange={(event) => updateChoice(key, event.target.checked)}
                       disabled={!phoneIsValid || busy}
-                      aria-describedby="phone-channel-help"
                       className="peer absolute inset-0 size-5 appearance-none rounded-[0.35rem] border border-[color:var(--color-line-strong)] bg-black/20 transition-colors checked:border-accent checked:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
                     />
                     <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] font-bold text-canvas opacity-0 peer-checked:opacity-100">✓</span>
