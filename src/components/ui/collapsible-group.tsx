@@ -10,6 +10,12 @@ interface CollapsibleGroupProps {
   defaultOpen?: boolean;
   icon?: React.ReactNode;
   children: React.ReactNode;
+  /**
+   * Optional controlled open state. Supplying both makes the group controlled, which lets a
+   * parent reveal it — e.g. to show a group whose required "Other" answer is still missing.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -23,8 +29,16 @@ export function CollapsibleGroup({
   defaultOpen = false,
   icon,
   children,
+  open: controlledOpen,
+  onOpenChange,
 }: CollapsibleGroupProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const panelId = useId();
   const reduce = useReducedMotion();
 
@@ -34,7 +48,7 @@ export function CollapsibleGroup({
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="flex items-center gap-2.5 text-sm font-medium text-ink">

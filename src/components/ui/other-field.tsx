@@ -12,12 +12,16 @@ interface OtherFieldProps {
   prompt: string;
   onChange: (value: string) => void;
   onCommit?: () => void;
+  /** Set when the visitor selected "Other" but has not yet said what we missed. */
+  error?: string | null;
 }
 
 /**
  * Custom "Other" free-text field (v2). Smoothly reveals when its parent option is selected;
- * value is retained in parent state so it survives back/forward navigation. Accessible label
- * + bounded length; reduced-motion falls back to a plain fade.
+ * value is retained in parent state so it survives back/forward navigation. Selecting
+ * "Other" makes this answer required — an unexplained "Other" tells us nothing about what
+ * the taxonomy is missing — so the control is marked required and reports its own error.
+ * Accessible label + bounded length; reduced-motion falls back to a plain fade.
  */
 export function OtherField({
   id,
@@ -26,8 +30,10 @@ export function OtherField({
   prompt,
   onChange,
   onCommit,
+  error = null,
 }: OtherFieldProps) {
   const reduce = useReducedMotion();
+  const errorId = `${id}-error`;
   return (
     <AnimatePresence initial={false}>
       {show ? (
@@ -47,14 +53,27 @@ export function OtherField({
               id={id}
               type="text"
               value={value}
+              required
               maxLength={OTHER_TEXT_MAX}
               autoComplete="off"
               onChange={(e) => onChange(e.target.value)}
               onBlur={onCommit}
-              aria-describedby={`${id}-guidance`}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={
+                error ? `${errorId} ${id}-guidance` : `${id}-guidance`
+              }
               placeholder="Type your answer…"
-              className={cn(formControlClassName, 'rounded-xl')}
+              className={cn(
+                formControlClassName,
+                'rounded-xl',
+                error && 'border-[color:var(--color-error)] focus:border-[color:var(--color-error)]',
+              )}
             />
+            {error ? (
+              <p id={errorId} role="alert" className="mt-1.5 text-sm text-error">
+                {error}
+              </p>
+            ) : null}
             <p id={`${id}-guidance`} className="mt-1.5 text-xs leading-5 text-faint">
               Keep this work-related; don&apos;t include sensitive personal information.
             </p>

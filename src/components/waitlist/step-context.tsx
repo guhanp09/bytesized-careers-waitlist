@@ -1,13 +1,15 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { submitContextStep } from '@/lib/actions/submit-context';
 import { Chip } from '@/components/ui/chip';
 import { Button } from '@/components/ui/button';
-import { InlineStatus, type StatusState } from '@/components/ui/inline-status';
+import { InlineStatus } from '@/components/ui/inline-status';
 import { OtherField } from '@/components/ui/other-field';
 import { formControlClassName } from '@/components/ui/form-control';
 import { cn } from '@/lib/utils/cn';
+import { useDeferredSave, type DeferredSaveResult } from './use-deferred-save';
+import { MISSING_CUSTOM_ANSWER_MESSAGE } from '@/lib/validation/preferences';
 import {
   LayersIcon, BriefcaseIcon, UserPlusIcon, FilmIcon, SparklesIcon,
   TrendingUpIcon, UsersIcon, ArrowRightIcon,
@@ -48,7 +50,6 @@ interface StepContextProps {
   onComplete: () => void;
 }
 
-const SAVE_DEBOUNCE_MS = 500;
 const toggle = (list: string[], v: string) =>
   list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 
@@ -62,55 +63,97 @@ function SectionLabel({ icon, children }: { icon: React.ReactNode; children: Rea
 }
 
 export function StepContext({ leadId, resumeToken, role, data, onChange, onComplete }: StepContextProps) {
-  const [status, setStatus] = useState<StatusState>('idle');
   const [submitting, setSubmitting] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<Record<string, unknown>>({});
+  /** Which "Other" answers were missing when Continue was last blocked. */
+  const [invalidOthers, setInvalidOthers] = useState<('platform' | 'niche')[]>([]);
 
-  async function persist(payload: Record<string, unknown>): Promise<boolean> {
-    if (Object.keys(payload).length === 0) return true;
-    setStatus('saving');
-    const result = await submitContextStep({ leadId, resumeToken, ...payload });
-    setStatus(result.ok ? 'saved' : 'error');
-    return result.ok;
-  }
-  function scheduleSave(payload: Record<string, unknown>) {
-    pending.current = { ...pending.current, ...payload };
-    if (timer.current) clearTimeout(timer.current);
-    setStatus('saving');
-    timer.current = setTimeout(() => {
-      const toSave = pending.current;
-      pending.current = {};
-      void persist(toSave);
-    }, SAVE_DEBOUNCE_MS);
+  // Like the interests step, this screen is option-dense: everything is staged locally and
+  // written once on Continue so a thorough visitor never exhausts the request budget.
+  const persist = useCallback(
+    async (payload: Record<string, unknown>): Promise<DeferredSaveResult> => {
+      const result = await submitContextStep({ leadId, resumeToken, ...payload });
+      return result.ok ? { ok: true } : { ok: false, message: result.error.message };
+    },
+    [leadId, resumeToken],
+  );
+  const { status, error: saveError, staged, stage, flush } = useDeferredSave(persist);
+
+  /**
+   * Stage the full context snapshot. An unanswered "Other" is normalized away (marker and
+   * text both dropped) so the leave-the-step safety net can never write a blank one.
+   */
+  const stageSnapshot = useCallback(
+    (next: ContextData) => {
+      const platformOther = next.platformOther.trim();
+      const nicheOther = next.nicheOther.trim();
+      const platforms = platformOther
+        ? next.platforms
+        : next.platforms.filter((v) => v !== 'other');
+      const niches = nicheOther ? next.niches : next.niches.filter((v) => v !== 'other');
+      stage({
+        workFormats: next.workFormats,
+        organisationTypes: next.organisationTypes,
+        platforms,
+        niches,
+        platformOther: platformOther || null,
+        nicheOther: nicheOther || null,
+        experienceLevel: next.experienceLevel,
+        availabilityToStart: next.availabilityToStart,
+        portfolioUrl: next.portfolioUrl.trim() || null,
+        hiringTimeline: next.hiringTimeline,
+        teamSize: next.teamSize,
+        companyUrl: next.companyUrl.trim() || null,
+      });
+    },
+    [stage],
+  );
+
+  /** Apply a change to flow state and stage the resulting snapshot in one place. */
+  function apply(patch: Partial<ContextData>) {
+    onChange(patch);
+    stageSnapshot({ ...data, ...patch });
   }
 
   function toggleMulti(field: 'platforms' | 'niches' | 'workFormats', value: string) {
     const next = toggle(data[field], value);
-    const patch: Record<string, unknown> = { [field]: next };
-    if (field === 'platforms') patch.platformOther = next.includes('other') ? data.platformOther : null;
-    if (field === 'niches') patch.nicheOther = next.includes('other') ? data.nicheOther : null;
-    onChange({ [field]: next } as Partial<ContextData>);
-    scheduleSave(patch);
+    const patch: Partial<ContextData> = { [field]: next } as Partial<ContextData>;
+    // Deselecting "Other" clears its answer; selecting it clears any stale error.
+    if (field === 'platforms' && !next.includes('other')) {
+      patch.platformOther = '';
+      setInvalidOthers((prev) => prev.filter((k) => k !== 'platform'));
+    }
+    if (field === 'niches' && !next.includes('other')) {
+      patch.nicheOther = '';
+      setInvalidOthers((prev) => prev.filter((k) => k !== 'niche'));
+    }
+    apply(patch);
   }
   function setSingle(field: 'experienceLevel' | 'availabilityToStart' | 'hiringTimeline' | 'teamSize', value: string) {
     const next = data[field] === value ? null : value;
-    onChange({ [field]: next } as Partial<ContextData>);
-    scheduleSave({ [field]: next });
+    apply({ [field]: next } as Partial<ContextData>);
   }
   function setOrg(value: string) {
     const next = data.organisationTypes[0] === value ? [] : [value];
-    onChange({ organisationTypes: next });
-    scheduleSave({ organisationTypes: next });
+    apply({ organisationTypes: next });
   }
 
   async function handleContinue() {
     if (submitting) return;
+
+    // Picking "Other" commits to naming what we missed.
+    const missing: ('platform' | 'niche')[] = [];
+    if (data.platforms.includes('other') && !data.platformOther.trim()) missing.push('platform');
+    if (data.niches.includes('other') && !data.nicheOther.trim()) missing.push('niche');
+    if (missing.length > 0) {
+      setInvalidOthers(missing);
+      requestAnimationFrame(() => {
+        document.getElementById(`${missing[0]}-other`)?.focus({ preventScroll: false });
+      });
+      return;
+    }
+
     setSubmitting(true);
-    if (timer.current) clearTimeout(timer.current);
-    const toSave = pending.current;
-    pending.current = {};
-    const ok = await persist(toSave);
+    const ok = await flush();
     setSubmitting(false);
     if (ok) onComplete();
   }
@@ -135,8 +178,7 @@ export function StepContext({ leadId, resumeToken, role, data, onChange, onCompl
       <input
         id={id} type="url" inputMode="url" autoComplete="off" placeholder="https://…"
         value={value}
-        onChange={(e) => onChange({ [field]: e.target.value } as Partial<ContextData>)}
-        onBlur={() => scheduleSave({ [field]: data[field] })}
+        onChange={(e) => apply({ [field]: e.target.value } as Partial<ContextData>)}
         className={cn(formControlClassName, 'rounded-xl')}
       />
     </div>
@@ -188,14 +230,24 @@ export function StepContext({ leadId, resumeToken, role, data, onChange, onCompl
         </SectionLabel>
         {multiChips(PLATFORM_VALUES, PLATFORM_LABELS, data.platforms, 'platforms')}
         <OtherField id="platform-other" show={data.platforms.includes('other')} value={data.platformOther}
-          prompt="What platform did we miss?" onChange={(v) => onChange({ platformOther: v })} onCommit={() => scheduleSave({ platformOther: data.platformOther })} />
+          prompt="What platform did we miss?"
+          onChange={(v) => {
+            if (v.trim()) setInvalidOthers((prev) => prev.filter((k) => k !== 'platform'));
+            apply({ platformOther: v });
+          }}
+          error={invalidOthers.includes('platform') ? MISSING_CUSTOM_ANSWER_MESSAGE : null} />
       </section>
 
       <section className="flex flex-col gap-2">
         <SectionLabel icon={<SparklesIcon className="size-4" />}>Creator niches</SectionLabel>
         {multiChips(NICHE_VALUES, NICHE_LABELS, data.niches, 'niches')}
         <OtherField id="niche-other" show={data.niches.includes('other')} value={data.nicheOther}
-          prompt="What niche did we miss?" onChange={(v) => onChange({ nicheOther: v })} onCommit={() => scheduleSave({ nicheOther: data.nicheOther })} />
+          prompt="What niche did we miss?"
+          onChange={(v) => {
+            if (v.trim()) setInvalidOthers((prev) => prev.filter((k) => k !== 'niche'));
+            apply({ nicheOther: v });
+          }}
+          error={invalidOthers.includes('niche') ? MISSING_CUSTOM_ANSWER_MESSAGE : null} />
       </section>
 
       {role === 'seeker' && (
@@ -227,7 +279,15 @@ export function StepContext({ leadId, resumeToken, role, data, onChange, onCompl
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <InlineStatus state={status} />
+        {saveError ? (
+          <p role="alert" className="text-sm text-error">{saveError}</p>
+        ) : invalidOthers.length > 0 ? (
+          <p role="alert" className="text-sm text-error">{MISSING_CUSTOM_ANSWER_MESSAGE}</p>
+        ) : status === 'idle' && staged ? (
+          <p className="text-sm text-faint">Your choices are saved when you continue.</p>
+        ) : (
+          <InlineStatus state={status} />
+        )}
         <Button type="button" onClick={handleContinue} disabled={submitting}>
           {submitting ? 'Saving…' : 'Continue'}
           {!submitting ? <ArrowRightIcon className="size-4" /> : null}

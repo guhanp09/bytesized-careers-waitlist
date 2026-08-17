@@ -341,11 +341,23 @@ test('a delayed progressive save keeps its honest state without scroll or layout
     await route.continue();
   });
 
+  // Selecting is now purely local — this step writes once on Continue rather than once per
+  // chip, so a thorough visitor cannot exhaust the per-IP request budget. Picking must
+  // therefore be silent, and must not move the page.
   const scrollBefore = await page.evaluate(() => window.scrollY);
   await page.getByRole('checkbox', { name: 'Video editing', exact: true }).click();
-  const saveStatus = page.getByRole('status').filter({ hasText: /Saving…|Saved/ });
-  await expect(saveStatus).toHaveText('Saving…');
-  await expect(saveStatus).toHaveText('Saved', { timeout: 5000 });
+  await page.getByRole('checkbox', { name: 'Thumbnail design', exact: true }).click();
+  await expect(page.getByText(/saved when you continue/i)).toBeVisible();
   expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollBefore)).toBeLessThan(3);
+  await expect.poll(() => hasHorizontalOverflow(page)).toBe(false);
+
+  // The one write is honest about being in flight while the (delayed) request resolves,
+  // and the transition still lands without horizontal overflow.
+  const submit = page.getByRole('button', { name: /Continue|Saving…/ });
+  await submit.click();
+  await expect(submit).toHaveText(/Saving…/);
+  await expect(page.getByRole('heading', { name: 'Confirm your email' })).toBeVisible({
+    timeout: 8000,
+  });
   await expect.poll(() => hasHorizontalOverflow(page)).toBe(false);
 });

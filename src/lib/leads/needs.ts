@@ -5,6 +5,7 @@ import {
   TALENT_CATEGORY_GROUPS,
   TALENT_CATEGORY_LABELS,
   groupOtherValue,
+  otherGroupIdOf,
 } from '@/lib/validation/constants';
 import {
   NEED_PROFILE_VERSION,
@@ -49,6 +50,47 @@ export function buildNeedProfile(
   }
 
   return { version: NEED_PROFILE_VERSION, groups: structured };
+}
+
+/**
+ * Group ids whose "Other" chip is selected but whose custom answer is still blank.
+ *
+ * An unexplained "Other" records nothing useful — the whole point is learning what the
+ * taxonomy is missing — so the form requires the answer before continuing and the server
+ * rejects the pairing.
+ */
+export function missingCustomAnswers(
+  selections: readonly string[],
+  customResponses: Record<string, string>,
+): string[] {
+  const missing: string[] = [];
+  for (const value of selections) {
+    const groupId = otherGroupIdOf(value);
+    if (groupId === null) continue;
+    if (!(customResponses[groupId] ?? '').trim()) missing.push(groupId);
+  }
+  return missing;
+}
+
+/**
+ * Drop any "Other" that has no answer, rather than storing a meaningless marker. Used on
+ * the best-effort save path (leaving a step without continuing) so the rest of the
+ * visitor's work is still persisted while the invariant above holds.
+ */
+export function sanitizeNeedSelection(
+  selections: readonly string[],
+  customResponses: Record<string, string>,
+): { selections: string[]; customResponses: Record<string, string> } {
+  const cleanedResponses: Record<string, string> = {};
+  for (const [groupId, text] of Object.entries(customResponses)) {
+    const trimmed = text.trim();
+    if (trimmed) cleanedResponses[groupId] = trimmed;
+  }
+  const cleanedSelections = selections.filter((value) => {
+    const groupId = otherGroupIdOf(value);
+    return groupId === null || Boolean(cleanedResponses[groupId]);
+  });
+  return { selections: cleanedSelections, customResponses: cleanedResponses };
 }
 
 function isStringArray(value: unknown): value is string[] {

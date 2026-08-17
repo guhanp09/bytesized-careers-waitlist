@@ -1,13 +1,16 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { submitPreferencesStep } from '@/lib/actions/submit-preferences';
 import { Chip } from '@/components/ui/chip';
 import { Button } from '@/components/ui/button';
-import { InlineStatus, type StatusState } from '@/components/ui/inline-status';
+import { InlineStatus } from '@/components/ui/inline-status';
 import { CollapsibleGroup } from '@/components/ui/collapsible-group';
 import { OtherField } from '@/components/ui/other-field';
 import { CompassIcon, UserPlusIcon, ArrowRightIcon, GROUP_ICON } from '@/components/ui/icons';
+import { useDeferredSave, type DeferredSaveResult } from './use-deferred-save';
+import { missingCustomAnswers, sanitizeNeedSelection } from '@/lib/leads/needs';
+import { MISSING_CUSTOM_ANSWER_MESSAGE } from '@/lib/validation/preferences';
 import {
   JOB_CATEGORY_GROUPS,
   JOB_CATEGORY_LABELS,
@@ -43,7 +46,6 @@ interface StepPreferencesProps {
   onComplete: () => void;
 }
 
-const SAVE_DEBOUNCE_MS = 500;
 const toggle = (list: string[], v: string) =>
   list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
 
@@ -56,36 +58,10 @@ export function StepPreferences({
   onComplete,
 }: StepPreferencesProps) {
   const [subStep, setSubStep] = useState<'work' | 'hire'>('work');
-  const [status, setStatus] = useState<StatusState>('idle');
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<SavePayload>({});
-
-  async function persist(payload: SavePayload): Promise<boolean> {
-    if (Object.keys(payload).length === 0) return true;
-    setStatus('saving');
-    const result = await submitPreferencesStep({ leadId, resumeToken, ...payload });
-    if (result.ok) {
-      setStatus('saved');
-      return true;
-    }
-    setStatus('error');
-    setError(result.error.message);
-    return false;
-  }
-
-  function scheduleSave(payload: SavePayload) {
-    pending.current = { ...pending.current, ...payload };
-    if (timer.current) clearTimeout(timer.current);
-    setStatus('saving');
-    setError(null);
-    timer.current = setTimeout(() => {
-      const toSave = pending.current;
-      pending.current = {};
-      void persist(toSave);
-    }, SAVE_DEBOUNCE_MS);
-  }
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  /** Group ids whose required "Other" answer is missing, surfaced after a blocked Continue. */
+  const [invalidGroups, setInvalidGroups] = useState<string[]>([]);
 
   const showWork = role === 'seeker' || (role === 'both' && subStep === 'work');
   const groups = showWork ? JOB_CATEGORY_GROUPS : TALENT_CATEGORY_GROUPS;
@@ -97,6 +73,32 @@ export function StepPreferences({
   const selected = showWork ? data.jobCategories : data.talentCategories;
   const othersMap = showWork ? data.jobCategoryOthers : data.talentCategoryOthers;
   const side: 'seeker' | 'recruiter' = showWork ? 'seeker' : 'recruiter';
+  const fieldId = (groupId: string) =>
+    `other-${showWork ? 'job' : 'talent'}-${groupId}`;
+
+  // A whole step is one write. Anything the visitor picks is staged locally and sent when
+  // they continue, so picking forty chips costs one request instead of forty.
+  const persist = useCallback(
+    async (payload: SavePayload): Promise<DeferredSaveResult> => {
+      const result = await submitPreferencesStep({ leadId, resumeToken, ...payload });
+      return result.ok ? { ok: true } : { ok: false, message: result.error.message };
+    },
+    [leadId, resumeToken],
+  );
+  const { status, error: saveError, staged, stage, flush } = useDeferredSave(persist);
+
+  /**
+   * Stage the complete side snapshot so the server can atomically rebuild the versioned
+   * profile. "Other" markers without an answer are dropped here: the Continue path has
+   * already validated them, and the leave-the-step safety net must never write a blank one.
+   */
+  function stageSide(nextSelected: string[], nextOthers: Record<string, string>) {
+    const clean = sanitizeNeedSelection(nextSelected, nextOthers);
+    stage({
+      [catField]: clean.selections,
+      [othersField]: clean.customResponses,
+    } as SavePayload);
+  }
 
   function toggleCategory(value: string) {
     const next = toggle(selected, value);
@@ -105,31 +107,41 @@ export function StepPreferences({
     if (otherGid && !next.includes(value)) {
       nextOthers = { ...othersMap };
       delete nextOthers[otherGid];
+      setInvalidGroups((prev) => prev.filter((id) => id !== otherGid));
     }
     onChange({ [catField]: next, [othersField]: nextOthers } as Partial<PreferencesData>);
-    scheduleSave({ [catField]: next, [othersField]: nextOthers });
+    stageSide(next, nextOthers);
   }
 
   function setGroupOther(groupId: string, text: string) {
     const nextOthers = { ...othersMap, [groupId]: text };
     onChange({ [othersField]: nextOthers } as Partial<PreferencesData>);
-    // Send a complete side snapshot so the server can atomically rebuild the versioned
-    // structured profile without reading or writing compatibility arrays.
-    scheduleSave({ [catField]: selected, [othersField]: nextOthers });
+    if (text.trim()) setInvalidGroups((prev) => prev.filter((id) => id !== groupId));
+    stageSide(selected, nextOthers);
   }
 
   async function handleContinue() {
     if (submitting) return;
+
+    // Selecting "Other" commits to telling us what we missed — block until it is answered.
+    const missing = missingCustomAnswers(selected, othersMap);
+    if (missing.length > 0) {
+      setInvalidGroups(missing);
+      const first = missing[0]!;
+      setOpenGroups((prev) => ({ ...prev, [`${side}:${first}`]: true }));
+      requestAnimationFrame(() => {
+        document.getElementById(fieldId(first))?.focus({ preventScroll: false });
+      });
+      return;
+    }
+
     setSubmitting(true);
-    if (timer.current) clearTimeout(timer.current);
-    const toSave = pending.current;
-    pending.current = {};
-    const ok = await persist(toSave);
+    const ok = await flush();
     setSubmitting(false);
     if (!ok) return;
     if (role === 'both' && subStep === 'work') {
       setSubStep('hire');
-      setStatus('idle');
+      setInvalidGroups([]);
     } else {
       onComplete();
     }
@@ -148,6 +160,7 @@ export function StepPreferences({
     : "Choose the roles you hire for most. We'll surface people who fit first.";
 
   const continueLabel = role === 'both' && subStep === 'work' ? 'Next' : 'Continue';
+  const blockedByOther = invalidGroups.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -170,13 +183,17 @@ export function StepPreferences({
             group.values.filter((v) => selected.includes(v)).length +
             (otherSelected ? 1 : 0);
           const prompt = OTHER_PROMPTS[group.id as CategoryGroupId]?.[side] ?? 'Tell us more';
+          const groupKey = `${side}:${group.id}`;
           return (
             <CollapsibleGroup
               key={group.id}
               label={group.label}
               count={count}
-              defaultOpen={index === 0}
               icon={Icon ? <Icon className="size-4" /> : undefined}
+              open={openGroups[groupKey] ?? index === 0}
+              onOpenChange={(next) =>
+                setOpenGroups((prev) => ({ ...prev, [groupKey]: next }))
+              }
             >
               <div className="flex flex-wrap gap-2" role="group" aria-label={group.label}>
                 {group.values.map((value) => (
@@ -194,20 +211,31 @@ export function StepPreferences({
                 />
               </div>
               <OtherField
-                id={`other-${showWork ? 'job' : 'talent'}-${group.id}`}
+                id={fieldId(group.id)}
                 show={otherSelected}
                 value={othersMap[group.id] ?? ''}
                 prompt={prompt}
                 onChange={(v) => setGroupOther(group.id, v)}
+                error={
+                  invalidGroups.includes(group.id) ? MISSING_CUSTOM_ANSWER_MESSAGE : null
+                }
               />
             </CollapsibleGroup>
           );
         })}
       </div>
 
-      {error ? (
+      {saveError ? (
         <p role="alert" className="text-sm text-error">
-          {error}
+          {saveError}
+        </p>
+      ) : blockedByOther ? (
+        <p role="alert" className="text-sm text-error">
+          {MISSING_CUSTOM_ANSWER_MESSAGE}
+        </p>
+      ) : status === 'idle' && staged ? (
+        <p className="text-sm text-faint">
+          Your choices are saved when you continue.
         </p>
       ) : (
         <InlineStatus state={status} />
