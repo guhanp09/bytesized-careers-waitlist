@@ -6,6 +6,7 @@ import { displayNeedGroups, hasCustomResponse, needCount } from '@/lib/leads/nee
 import { labelFor } from '@/lib/validation/constants';
 import { formatIstDateTime, readablePercent } from '@/lib/admin/time';
 import { legacyReferrerHostname, type AttributionTouchV1 } from '@/lib/attribution/campaign';
+import { DeleteLeadPanel } from './delete-lead-panel';
 
 interface LeadDetailDialogProps { lead: AdminLeadRow; onClose: () => void; }
 
@@ -274,6 +275,12 @@ export function LeadDetailDialog({ lead, onClose }: LeadDetailDialogProps) {
             {lead.talentSeniority ? <Field label="Legacy talent seniority">{labelFor(lead.talentSeniority)}</Field> : null}
           </dl>
         </details>
+
+        <DeleteLeadPanel
+          leadId={lead.id}
+          email={lead.originalEmail}
+          onDeleted={() => dialogRef.current?.close()}
+        />
       </div>
     </dialog>
   );

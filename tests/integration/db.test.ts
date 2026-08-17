@@ -19,6 +19,7 @@ import {
   getDashboardAnalytics,
   listLeads,
   listLeadsForExport,
+  deleteLeadById,
 } from '@/lib/db/queries/admin';
 import { toCsv } from '@/lib/admin/csv';
 import {
@@ -839,5 +840,44 @@ describe('section-specific "Other" responses', () => {
     expect(lead.seekerNeeds.groups).toEqual([
       { id: 'creative_production', selections: [], otherSelected: true, customResponse: 'Set design' },
     ]);
+  });
+});
+
+describe('deleteLeadById — admin erasure', () => {
+  it('removes the whole registration and reports the address that was deleted', async () => {
+    const lead = await createLead('erase.me@example.com', {}, 'Test Signup');
+    await updateLeadRole({ leadId: lead.id, resumeToken: lead.token, role: 'seeker' });
+
+    const result = await deleteLeadById(lead.id);
+    expect(result.deleted).toBe(true);
+    expect(result.normalizedEmail).toBe(normalizeEmail(lead.email));
+
+    const rows = await db.select().from(waitlistLeads).where(eq(waitlistLeads.id, lead.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it('is idempotent — deleting an already-deleted id reports no deletion, throws nothing', async () => {
+    const lead = await createLead('erase.twice@example.com');
+    expect((await deleteLeadById(lead.id)).deleted).toBe(true);
+    const second = await deleteLeadById(lead.id);
+    expect(second.deleted).toBe(false);
+    expect(second.normalizedEmail).toBeNull();
+  });
+
+  it('leaves every other registration untouched', async () => {
+    const doomed = await createLead('erase.target@example.com');
+    const keeper = await createLead('erase.keeper@example.com');
+
+    await deleteLeadById(doomed.id);
+
+    const survivors = await db.select().from(waitlistLeads).where(eq(waitlistLeads.id, keeper.id));
+    expect(survivors).toHaveLength(1);
+  });
+
+  it('frees the email so the same person can register again afterwards', async () => {
+    const lead = await createLead('erase.rejoin@example.com');
+    await deleteLeadById(lead.id);
+    const again = await createLead('erase.rejoin@example.com');
+    expect(again.id).not.toBe(lead.id);
   });
 });

@@ -871,3 +871,24 @@ export async function getAdminFilterOptions(
     campaigns: normalizeRows<{ value: string }>(campaignRows).map((row) => row.value),
   };
 }
+
+/**
+ * Permanently remove one registration, returning what was deleted so the action can write
+ * an audit line. Everything the waitlist stores about a person lives on this row (including
+ * verification state), so a single delete leaves no orphaned rows behind — `rate_limit_hits`
+ * is keyed by peppered-hash subject, never by lead.
+ *
+ * Hard delete is deliberate: this backs data-subject erasure requests as well as clearing
+ * test signups, and a soft delete would keep the contact data we were asked to remove.
+ */
+export async function deleteLeadById(
+  leadId: string,
+): Promise<{ deleted: boolean; normalizedEmail: string | null }> {
+  const db = getDb();
+  const rows = await db
+    .delete(waitlistLeads)
+    .where(eq(waitlistLeads.id, leadId))
+    .returning({ normalizedEmail: waitlistLeads.normalizedEmail });
+  const row = rows[0];
+  return { deleted: Boolean(row), normalizedEmail: row?.normalizedEmail ?? null };
+}

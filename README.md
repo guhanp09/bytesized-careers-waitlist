@@ -151,7 +151,23 @@ Production settings.
 
 ### Deleting a lead / handling a deletion request
 
-Delete by normalized email (data-deletion requests):
+Use the dashboard — no SQL required, and the removal is written to the logs:
+
+1. Open **Leads**, find the registration, click **View**.
+2. Scroll to **Delete this registration** at the bottom of the panel.
+3. Click **Delete registration…**, check the address shown in the confirmation, then
+   **Yes, delete permanently**.
+
+This removes the entire row — contact details, intent, selections, comments and verification
+history — which is everything the waitlist stores about that person, so nothing is left
+orphaned. It is permanent and is not exported first; take an export beforehand if the record
+still matters. Every deletion emits a `lead_deleted` log line with the acting admin login and
+a masked address; a no-op double-click logs `lead_delete_noop` instead. The action re-checks
+admin authorization server-side, so it cannot be driven from an unauthenticated client.
+
+Use it for clearing test signups and for actioning data-subject erasure requests.
+
+Deleting by email in SQL (only if the dashboard is unavailable):
 ```bash
 docker exec bytesized-pg psql -U postgres -d bytesized \
   -c "delete from waitlist_leads where normalized_email = 'person@example.com';"
