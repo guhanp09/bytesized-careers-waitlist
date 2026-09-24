@@ -23,7 +23,8 @@ and planning documents are compatibility references only.
 | Experience, availability, portfolio | Seeker only | Optional | corresponding context fields | `submitContextStep` | scalar context columns | Seeker context |
 | Hiring timeline, team size, website/channel | Recruiter only | Optional | corresponding context fields | `submitContextStep` | scalar context columns | Recruiter context |
 | Phone | All | Optional | country and number | `submitPhoneStep` | E.164 and country | Contact presence |
-| Phone ownership | Phone supplied | Non-blocking | verification UI state | phone verification actions | verification status and timestamps | Contactability, not completion |
+| Phone ownership | Legacy records only | Not collected by the current public flow | No phone OTP step | Legacy compatibility only | Historical verification status and timestamps | Never imply a newly captured number is verified |
+| Phone-channel choices | Phone supplied | Optional, independent choices | `whatsappConsent`, `smsConsent`, `voiceConsent` | `submitPhoneStep` | `phone_*_consent` plus version/time/source | Choices shown separately; no outbound sending activated |
 | Final role-aware response | All | Optional | `additionalNotes` | `submitNoteStep` | `additional_notes` | Untruncated editorial block and CSV context |
 | Funnel and resume | All | Operational | flow state | all progressive actions | completion, meaningful step, timestamps, hashed resume token | At-a-glance and secondary metadata |
 
@@ -60,6 +61,8 @@ constants, so summaries are deterministic and display copy is not duplicated in 
   are present in the actual UI.
 - `additional_notes`, funnel/completion fields, structured first/last-touch attribution, and timestamps.
 - Transactional delivery status as secondary operational metadata.
+- Independent phone WhatsApp/SMS/voice choices with consent version, time and source;
+  a phone number alone is not permission to contact it.
 
 ## Compatibility/deprecated fields
 
@@ -68,8 +71,8 @@ constants, so summaries are deterministic and display copy is not duplicated in 
   temporarily; current saves no longer write them.
 - `job_interest_other` and `talent_need_other`: deprecated generic Other fields whose group
   cannot be inferred safely.
-- `whatsapp_consent`, its timestamp, and copy version: deprecated because the current form
-  contains no promotional consent control.
+- `whatsapp_consent`, its timestamp, and copy version: legacy fields, not the authority
+  for current channel choices. Current saves use separate `phone_*_consent` fields.
 - `hiring_frequency` and `talent_seniority`: orphaned; no current UI controls, and current
   validation/actions no longer accept them.
 - Promotional email unsubscribe fields remain compatibility/future-channel metadata, not
@@ -83,7 +86,8 @@ No compatibility column is removed by the v2 migration.
 
 - Email saved: `email_only`, meaningful step `email`.
 - Role or later progressive save: `partial`.
-- Email and phone verification remain independent contactability states.
+- Email verification is independent of completion; phone verification fields preserve
+  historical state but the current flow validates format only, not ownership.
 - Phone save/skip does not complete the funnel.
 - A successful final-note submission, including an intentionally empty note, marks the lead
   `completed` at current step 8.

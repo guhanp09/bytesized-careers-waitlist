@@ -1,214 +1,128 @@
-# ByteSized Careers — Waitlist
+# ByteSized Careers — Early Access
 
-A premium, dark, single-page waitlist for **ByteSized Careers** (creator-economy jobs & talent). It collects and reliably persists a person's name and email through a low-friction progressive flow, with ownership verification, a protected admin dashboard, and CSV export.
+A standalone early-access application for a creator-economy hiring marketplace.
+People seeking work, hiring talent, or doing both can register their interest;
+operators can review structured demand, contactability, and acquisition sources.
 
-> This repository is **standalone** and must stay fully separate from the CreatorJobs project (code, GitHub repo, Vercel project, Neon database, env vars).
+[Visit the early-access page](https://bytesizedcareers.com/early-access) ·
+[Reviewer guide](docs/REVIEWER_GUIDE.md) · [Architecture](docs/ARCHITECTURE.md) ·
+[Local setup](docs/LOCAL_DEVELOPMENT.md)
 
-- **Stack:** Next.js (App Router) · TypeScript · Tailwind CSS v4 · Drizzle ORM · Neon Postgres · Auth.js (GitHub OAuth) · Zod · Vitest + Playwright · Vercel.
-- **Works with or without email delivery.** Real Resend verification is implemented behind disabled-by-default feature flags (see [`docs/email-integration.md`](docs/email-integration.md)).
+Built with **Next.js, React, TypeScript, Tailwind CSS, Drizzle, and PostgreSQL**.
+Maintained by **Guhan Purushothaman**.
 
----
+## What this project demonstrates
 
-## The flow
+This is more than a static signup page: it connects a progressive, resumable user
+journey to server-side validation, persistent storage, email verification, protected
+administration, and structured reporting. It is deliberately narrower than the
+[full marketplace](https://github.com/guhanp09/bytesized-careers).
 
+The public site is an early-access registration experience—not live job matching,
+an automatic marketplace account, or a promise of an interview or job. Source
+publication is not a claim of production certification, traction, or legal approval.
+See [current evidence and remaining work](docs/PROJECT_STATUS.md).
+
+## Implemented experience
+
+| Area | What is implemented |
+| --- | --- |
+| Public entry | Brand landing page at `/`; dedicated journey at `/early-access`; responsive desktop/mobile layout |
+| Progressive registration | Name/email, seeker/recruiter/both intent, structured interests, relevant context, optional phone/channel choices, final note |
+| Recovery | Saved server-side progress, token-scoped resume, masked-email confirmation, correction of an entered email |
+| Verification | Email challenge lifecycle, provider acceptance tracking, expiry, retry limits, local test provider and unavailable-provider fallback |
+| Administration | Allowlisted GitHub login, filtered/paginated lead table, detail view, overview charts, filtered CSV export, confirmed single-registration deletion |
+| Attribution | Bounded campaign parameters, structured first/last-touch records, source/cohort reporting |
+| Privacy boundaries | Separate phone-channel choices, restricted admin data, exports excluding verification secrets, public notices, manual rights-handling runbook |
+
+Phone input is normalized and validated, **not ownership-verified** in the current
+public flow. WhatsApp, SMS, and voice choices do not activate outbound messaging.
+Email verification and funnel completion are separate states.
+
+## How the flow works
+
+```text
+Name + email → Role → Interests → Email verification → Context
+              → Optional phone/channel choices → Note → Confirmation
 ```
-Name + email → Role → Interests → Email verification → Context → Phone → Phone mock verification → Note → Success
+
+The initial contact is saved before success is acknowledged. Option-heavy interests
+and context steps stage changes locally and save when Continue is pressed, avoiding
+one network write per selection. Leaving a step attempts a best-effort save; abrupt
+tab/process termination is not a guarantee that pending changes have persisted.
+Returning users resume from the saved checkpoint.
+
+“The Brief” companion panel renders a readable summary of the visitor's choices.
+It is deterministic presentation, not a matching engine or prediction of outcomes.
+
+## Architecture
+
+```text
+Next.js pages + progressive form
+  └─ Server actions → Zod validation + rate limits + token checks
+       ├─ Drizzle → PostgreSQL (local driver / hosted Neon HTTP adapter)
+       └─ Verification challenge → email-provider interface → Resend or test mode
+
+GitHub OAuth → administrator allowlist → protected queries / CSV / deletion
 ```
 
-Every step persists **before** advancing — there is no final "Submit" gate, so a visitor who leaves partway is still a useful, segmented lead. Returning visitors can resume (masked email, explicit confirmation). The highest-priority guarantee: **no silently lost email submission** — success is shown only after the database confirms the write.
+The [architecture guide](docs/ARCHITECTURE.md) explains persistence, ownership,
+provider failures, compatibility decisions, and known tradeoffs.
 
----
+## Repository map
 
-## Local setup
+| Path | Responsibility |
+| --- | --- |
+| [`src/app/`](src/app/) | Public/legal pages, protected admin pages, auth/export routes |
+| [`src/components/waitlist/`](src/components/waitlist/) | Progressive flow, individual steps, deferred persistence |
+| [`src/components/brief/`](src/components/brief/) | Answer-to-summary model and responsive presentation |
+| [`src/lib/actions/`](src/lib/actions/) | Server-side mutation and verification boundaries |
+| [`src/lib/db/`](src/lib/db/) | Schema, driver abstraction, token-scoped and admin queries |
+| [`src/lib/email/`](src/lib/email/) and [`src/lib/verification/`](src/lib/verification/) | Provider contract, templates, challenges, failure handling |
+| [`src/lib/attribution/`](src/lib/attribution/) | Versioned campaign data and safe link propagation |
+| [`drizzle/`](drizzle/) | Committed SQL migrations and schema snapshots |
+| [`tests/`](tests/) | Unit, PostgreSQL integration, and Chromium browser scenarios |
+| [`.github/workflows/`](.github/workflows/) | CI definition; see evidence before assuming it is green |
+| [`docs/`](docs/README.md) | Reviewer, setup, subsystem, status, and operational guides |
 
-**Prerequisites:** Node 20+ (tested on 24), Docker (for a local Postgres), and Git.
+## Running and testing locally
+
+Use Node.js 24 for the locally checked toolchain and a **disposable local PostgreSQL**
+database. The [setup guide](docs/LOCAL_DEVELOPMENT.md) covers safe configuration,
+test-provider verification, and the separate test database.
 
 ```bash
-# 1. Install dependencies
-npm install
-
-# 2. Start a local Postgres (Docker) on host port 5433
-docker run -d --name bytesized-pg \
-  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=bytesized \
-  -p 5433:5432 postgres:16-alpine
-
-# 3. Create your local env file
-cp .env.example .env.local
-# then edit .env.local — for local Docker, set:
-#   DATABASE_URL=postgresql://postgres:postgres@localhost:5433/bytesized
-#   DB_DRIVER=node-postgres
-#   RESUME_TOKEN_SECRET / RATE_LIMIT_IP_PEPPER / AUTH_SECRET  (any random strings for dev)
-
-# 4. Apply migrations
-npm run db:migrate
-
-# 5. Run the app
-npm run dev            # http://localhost:3000
+npm ci
+npm run typecheck
+npm run lint
+npm test -- tests/unit
 ```
 
-### Environment variables
+**Known clean-install gate:** the last inspected hosted CI run failed at `npm ci`
+with missing optional entries in the lockfile. Local tests using installed dependencies
+do not clear that hosted failure. See [exact evidence](docs/PROJECT_STATUS.md)
+before treating this as a reproducible, fully green release.
 
-See [`.env.example`](.env.example) for the full annotated list. Required for the core waitlist:
+PostgreSQL integration tests and browser journeys additionally require the migrated
+test database. Never point those commands at the live waitlist or at the marketplace.
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | Postgres connection string (a **separate** Neon project — never the CreatorJobs DB). |
-| `DB_DRIVER` | `node-postgres` locally; leave unset in production to use the Neon HTTP driver (auto-detected). |
-| `RESUME_TOKEN_SECRET` | Server-only pepper for hashing resume tokens. |
-| `RATE_LIMIT_IP_PEPPER` | Server-only pepper for hashing IPs in the rate limiter (raw IPs are never stored). |
-| `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Admin login via GitHub OAuth. |
-| `ADMIN_ALLOWED_GITHUB_LOGINS` | Comma-separated GitHub usernames allowed into `/admin`. |
-| `ADMIN_LOCAL_PREVIEW_ENABLED` | Optional localhost-only development preview; disabled by default and hard-disabled outside development. |
-| `EMAIL_DELIVERY_ENABLED`, `EMAIL_VERIFICATION_ENABLED` | Real verification gates. Both are required to be `true` in Production after Resend is configured. |
-| `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, `EMAIL_REPLY_TO` | Real email delivery configuration; only read when delivery is enabled. |
-| `LOCAL_VERIFICATION_ENABLED` | Development/test mock codes only; production hard-disables it. |
+## Product direction
 
-Email-provider variables are optional while delivery is disabled. See [`docs/email-integration.md`](docs/email-integration.md) for the secure activation checkpoint.
+The current goal is to capture and understand early interest without making
+unsupported marketplace promises. Next steps include reproducible hosted validation,
+verified email/operational evidence, stronger recovery and privacy operations, and a
+separately designed invitation handoff. Any future account activation needs user
+review and affirmative submission; a waitlist record is not automatic consent to
+public profiles, outreach, or matching.
 
----
+## Boundaries and responsible review
 
-## Common tasks
+This application has its own repository, deployment, database, and environment
+configuration. The full marketplace remains a separate project. No lead exports,
+private databases, credentials, installed dependencies, or generated build artifacts
+belong in this repository. Review with synthetic data; do not submit test leads to
+the live service or probe protected endpoints without permission.
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the dev server. |
-| `npm run build` / `npm start` | Production build / serve. |
-| `npm run typecheck` | TypeScript check. |
-| `npm run lint` | ESLint. |
-| `npm test` | Unit + integration tests (Vitest). |
-| `npm run test:e2e` | End-to-end tests (Playwright). |
-| `npm run smoke:production-email-config` | Fail unless the current environment has release-safe, sanitized Production email configuration. |
-| `npm run db:generate` | Generate a new SQL migration from `src/lib/db/schema.ts`. |
-| `npm run db:migrate` | Apply migrations. |
-| `npm run db:seed-admin-examples` | Upsert clearly marked dashboard demo leads into local PostgreSQL only. |
-| `npm run db:remove-admin-examples` | Remove only marked local demo leads; run only with explicit approval. |
-| `npm run db:studio` | Open Drizzle Studio. |
-
-### Testing local submissions & verifying data in the DB
-
-1. Run `npm run dev`, open the site, and submit the flow.
-2. Inspect the row:
-   ```bash
-   docker exec bytesized-pg psql -U postgres -d bytesized \
-     -c "select normalized_email, role, completion_status, phone_whatsapp_consent, phone_sms_consent, phone_voice_consent from waitlist_leads order by created_at desc limit 5;"
-   ```
-
----
-
-## Creating the separate Neon project (production DB)
-
-1. In [Neon](https://neon.tech), create a **new project** dedicated to this waitlist (do **not** reuse the CreatorJobs Neon project).
-2. Copy its connection string into Vercel as `DATABASE_URL` (see below). Leave `DB_DRIVER` unset in production — the app auto-selects the Neon HTTP driver for `*.neon.tech` URLs.
-3. Apply migrations against it once:
-   ```bash
-   DATABASE_URL="<neon-url>" npx drizzle-kit migrate
-   ```
-   (Optionally use Neon's branch-per-preview so each Vercel preview deploy gets an isolated database branch.)
-
----
-
-## Deploying to Vercel
-
-1. Create a **new Vercel project** for this repo (separate from CreatorJobs).
-2. Add the environment variables above under **Project → Settings → Environment Variables** (Production + Preview).
-   - Create a GitHub OAuth app (`https://github.com/settings/developers`) with callback `https://<your-domain>/api/auth/callback/github`, and set `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET`.
-   - Set `AUTH_SECRET` (`openssl rand -base64 32`).
-   - Set `ADMIN_ALLOWED_GITHUB_LOGINS` to your GitHub username.
-   - Configure the Production email settings in the checklist in [`docs/email-integration.md`](docs/email-integration.md). Production requires both email flags enabled, Resend credentials present, and local verification disabled.
-   - The Vercel Production build automatically runs `npm run smoke:production-email-config` semantics before compiling. It prints statuses only, never values, and stops the deployment when configuration is unsafe.
-3. Deploy. The app runs on the Vercel-assigned domain until you connect a custom domain.
-
-Vercel Production builds run the same sanitized check automatically before `next build` and
-fail before release if the required email configuration is unsafe. The standalone smoke
-command is strict for CI/build shells that already have the target variables injected. Do not
-pull Sensitive Production values into a local file; local and Preview builds do not enforce
-Production settings.
-
-### Connecting `bytesizedcareers.com` (after purchase)
-
-1. Buy the domain and add it under **Vercel → Project → Domains**; follow the DNS instructions.
-2. Update the GitHub OAuth app callback URL to the new domain.
-3. When you're ready for email, follow [`docs/email-integration.md`](docs/email-integration.md).
-
----
-
-## Admin dashboard
-
-`/admin/waitlist` — sign in with an allowlisted GitHub account.
-
-- **Summary counts:** total, email-only, partial, completed, seekers, recruiters, both, and verified vs unverified.
-- **Breakdowns:** top interests, top sources.
-- **Filters:** role, completion, verification, interests, phone presence, source, dates, and contact search — all synced to the URL.
-- **Export CSV** reflects the active filters and includes verification status.
-
-### Exporting lead buckets & backing up contacts
-
-- Apply filters, then click **Export CSV** (or hit `/api/admin/waitlist/export?<filters>` while authenticated).
-- For a full backup, export with no filters, or dump the table:
-  ```bash
-  docker exec bytesized-pg pg_dump -U postgres -t waitlist_leads bytesized > backup.sql
-  ```
-
-### Deleting a lead / handling a deletion request
-
-Use the dashboard — no SQL required, and the removal is written to the logs:
-
-1. Open **Leads**, find the registration, click **View**.
-2. Scroll to **Delete this registration** at the bottom of the panel.
-3. Click **Delete registration…**, check the address shown in the confirmation, then
-   **Yes, delete permanently**.
-
-This removes the entire row — contact details, intent, selections, comments and verification
-history — which is everything the waitlist stores about that person, so nothing is left
-orphaned. It is permanent and is not exported first; take an export beforehand if the record
-still matters. Every deletion emits a `lead_deleted` log line with the acting admin login and
-a masked address; a no-op double-click logs `lead_delete_noop` instead. The action re-checks
-admin authorization server-side, so it cannot be driven from an unauthenticated client.
-
-Use it for clearing test signups and for actioning data-subject erasure requests.
-
-Deleting by email in SQL (only if the dashboard is unavailable):
-```bash
-docker exec bytesized-pg psql -U postgres -d bytesized \
-  -c "delete from waitlist_leads where normalized_email = 'person@example.com';"
-```
-(Against production, run the same statement via the Neon SQL editor.)
-
-### Channel choices do not activate sending
-
-The phone step records independent WhatsApp, SMS, and voice choices with version/time/source metadata. There is no outbound implementation. Do not use a number, the legacy `whatsapp_consent` field, or the default email subscription status as permission. Any future channel must gate on the matching current choice and pass the documented provider, sender, suppression, legal, content, and withdrawal review first.
-
----
-
-## Troubleshooting failed submissions
-
-- **Structured logs:** the server logs JSON lines to stdout (Vercel log stream). Look for `email_capture_failed`, `role_save_failed`, etc. Logs never contain raw emails/phones/tokens.
-- **Rate limiting:** repeated submissions from one IP are throttled (5/10min for email). Inspect `rate_limit_hits` if legitimate users are blocked.
-- **"Session expired" on later steps:** the resume token is missing/expired — the visitor can re-enter their email to continue safely (idempotent upsert).
-
----
-
-## Project structure
-
-```
-src/
-  app/                     # brand /, early access + legal /early-access/*, /admin/*, /api/*
-  components/waitlist/     # progressive steps + flow orchestrator + resume prompt
-  components/ui/           # button, chip, checkbox, tap-target-card, country-select, …
-  lib/
-    db/schema.ts           # Drizzle schema (waitlist_leads, rate_limit_hits)
-    db/queries/            # leads.ts (flow), admin.ts (dashboard)
-    actions/               # server actions, one per step + resume
-    validation/            # Zod schemas + the category/format/org vocabularies
-    tokens/ rate-limit/ email/ verification/ auth/ utils/
-tests/                     # unit, integration (Postgres), e2e (Playwright)
-drizzle/                   # generated SQL migrations
-```
-
-See [`docs/email-integration.md`](docs/email-integration.md) for local mock testing, Resend DNS setup, and the gated production rollout.
-
-See [`docs/lead-domain.md`](docs/lead-domain.md) for the current form-to-database field map,
-structured seeker/recruiter intent model, compatibility policy, and admin/export contract.
-
-See [`docs/campaign-attribution-guide.md`](docs/campaign-attribution-guide.md) for the supported
-campaign-link allowlist, first/last-touch rules, persistence model, reporting, and copyable URLs.
+See [contributing](CONTRIBUTING.md), [security reporting](SECURITY.md), and the
+[documentation index](docs/README.md). Public source does not imply an open-source
+license; no license has been selected in this publication update.
